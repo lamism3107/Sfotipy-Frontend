@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  margin: 0;
+  padding: 0;
+  text-decoration: none;
+  box-sizing: border-box;
+  list-style: none;
+
+  font-family: "Poppins", sans-serif;
+}
+:root {
+  --secondary_bg: #121212;
+  --card_sec_bg: #1212125e;
+  --tertiary_bg: #242424;
+  --card_bg: #303030;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 40px;
+  border-radius: 8px;
+  background-color: transparent;
+}
+/* Track */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #323232;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #404040;
+}
+
+body {
+  margin: 0;
+  overflow: hidden !important;
+  background-color: #000;
+  color: #fff;
+  padding: 0 !important;
+  scroll-behavior: smooth;
+  /* font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif; */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Clonge spotify */
+
+.secondary_bg {
+  background: var(--secondary_bg);
+}
+.tertiary_bg {
+  background: var(--tertiary_bg);
+}
+
+.linear_bg {
+  background: linear-gradient(rgba(255, 255, 255, 0.1) 0%, rgb(0, 0, 0) 100%);
+}
