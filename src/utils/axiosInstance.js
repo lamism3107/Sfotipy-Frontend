@@ -6,7 +6,7 @@ import { loginSuccess } from "../redux/slice/auth.slice";
 
 const config = {
   // BASE_URL: "http://localhost:8000/api",
-  BASE_URL: "sfotipy-backend.vercel.app/api",
+  BASE_URL: "https://sfotipy-backend.vercel.app/api",
 
   TIME_OUT: 10000,
 };
