@@ -6,10 +6,10 @@ function Section({ title, type }) {
   return (
     <>
       <div
-        className="bg-secondaryBg  max-h-[calc(100vh-56px)]  z-2  pt-4 pb-8 overflow-hidden"
+        className="bg-transparent  max-h-[calc(100vh-56px)]  z-2  pt-4 pb-8 overflow-hidden"
         style={{ BiBorderRadius: "0.5rem" }}
       >
-        <div className="px-4 flex justify-between mb-4 items-center">
+        <div className="relative px-4 flex justify-between mb-4 items-center">
           <span className="text-xl font-bold hover:underline cursor-pointer">
             {title}
           </span>

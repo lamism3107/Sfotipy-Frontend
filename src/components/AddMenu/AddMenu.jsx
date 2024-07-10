@@ -1,8 +1,11 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { BiAlbum } from "react-icons/bi";
 import { IoAlbumsOutline } from "react-icons/io5";
 import { useDispatch, useSelector } from "react-redux";
+import { openConfirmModal } from "../../redux/slice/system.slice";
+import { setCurrentCategory } from "../../redux/slice/library.slice";
 
 const userOptions = {
   type: "playlist",
@@ -11,33 +14,34 @@ const userOptions = {
 };
 const artistOptions = [
   {
-    type: "album",
+    type: "Album",
     icon: <IoAlbumsOutline className="text-lg  hover:text-green-400" />,
     title: "Tạo mới một album",
   },
   {
-    type: "song",
+    type: "Song",
     icon: <BiAlbum className="text-lg hover:text-green-400" />,
     title: "Tạo mới một bài hát",
   },
   {
-    type: "playlist",
+    type: "Playlist",
     icon: <IoAlbumsOutline className="text-lg  hover:text-green-400" />,
     title: "Tạo mới một playlist",
   },
 ];
 export const AddMenu = ({
-  category,
-  setCategory,
   handleSelect,
   buttonAddRef,
+  setIsOpenMenu,
   isOpen,
   setIsOpen,
-  isOpenModal,
-  setIsOpenModal,
 }) => {
   const user = useSelector((state) => state.auth.login.currentUser);
-
+  const reduxCurrentCategory = useSelector(
+    (state) => state.library.category.currentCategory
+  );
+  const router = useRouter();
+  const dispatch = useDispatch();
   const boxRef = useRef(null);
 
   const handleClickOutside = (event) => {
@@ -74,10 +78,16 @@ export const AddMenu = ({
                     index === 0 && "mt-1"
                   } ${
                     index === 2 && "mb-1"
-                  } text-md p-2.5  hover:text-green-400  gap-3 bg-[#282828] hover:bg-[#323232] `}
+                  } text-md px-2.5 py-2  hover:text-green-400  gap-3 bg-[#282828] hover:bg-[#323232] `}
                   onClick={() => {
-                    setCategory(item.type);
+                    dispatch(setCurrentCategory("All"));
                     handleSelect(item.type);
+                    setIsOpenMenu(() => {
+                      return {
+                        add: false,
+                        filter: false,
+                      };
+                    });
                   }}
                 >
                   {item.icon}
@@ -88,10 +98,13 @@ export const AddMenu = ({
           ) : (
             <>
               <div
-                className="min-w-[190px]  w-full flex items-center my-1 text-md p-2.5  hover:text-green-400  gap-3 bg-[#282828] hover:bg-[#323232] "
+                className="min-w-[190px]  w-full flex items-center my-1 text-md px-2.5 py-1.5 hover:text-green-400  gap-3 bg-[#282828] hover:bg-[#323232] "
                 onClick={() => {
-                  setCategory(item.type);
-                  handleSelect(item.type);
+                  handleSelect("Playlist");
+                  setIsOpenMenu(() => ({
+                    add: false,
+                    filter: false,
+                  }));
                 }}
               >
                 <IoAlbumsOutline className="text-lg  hover:text-green-400" />
@@ -105,7 +118,18 @@ export const AddMenu = ({
           <div
             className="min-w-[190px]  w-full flex items-center my-1 text-md p-2.5  hover:text-green-400  gap-3 bg-[#282828] hover:bg-[#323232] "
             onClick={() => {
-              setIsOpenModal(true);
+              dispatch(
+                openConfirmModal({
+                  title: "Tạo mới một playlist",
+                  cancelButton: "Không phải bây giờ",
+                  okButton: "Đăng nhập ",
+
+                  onOk: () => {
+                    router.push("/login");
+                  },
+                  children: "Hãy đăng nhập để tạo vào chia sẻ playlist của bạn",
+                })
+              );
             }}
           >
             <IoAlbumsOutline className="text-lg  hover:text-green-400" />

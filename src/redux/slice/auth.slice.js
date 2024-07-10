@@ -28,7 +28,6 @@ const authSlice = createSlice({
       state.login.isFetching = true;
     },
     loginSuccess: (state, action) => {
-      console.log(action);
       state.login = {
         currentUser: action.payload,
         isFetching: false,
@@ -79,7 +78,6 @@ const authSlice = createSlice({
       };
     },
     setAccessToken: (_, action) => {
-      console.log(action.payload);
       state.token.accessToken = action.payload;
     },
     deleteAccessToken: () => {

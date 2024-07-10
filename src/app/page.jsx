@@ -1,19 +1,36 @@
 "use client";
-
-import Image from "next/image";
 import MainLayout from "./Layout/MainLayout";
-import Header from "../components/Header/Header";
 import Section from "../components/Section/Section";
-import Sidebar from "../components/Sidebar/Sidebar";
+import GradientBG from "../components/GradientBG/GradientBG";
+import { useEffect, useRef, useState } from "react";
+import Header from "../components/Header/Header";
 
 function Home() {
+  const bodyRef = useRef();
+  const [isVisible, setIsVisible] = useState(false);
+  useEffect(() => {
+    const handleScroll = () => {
+      if (bodyRef?.current.scrollTop > 40) {
+        setIsVisible(true);
+      } else {
+        setIsVisible(false);
+      }
+    };
+
+    bodyRef?.current?.addEventListener("scroll", handleScroll);
+    return () => {
+      bodyRef?.current?.removeEventListener("scroll", handleScroll);
+    };
+  }, []);
   return (
     <MainLayout>
-      <Sidebar />
-      <div className="w-[calc(75%-8px)] absolute -z-10 right-0 top-0 ml-8">
-        <Header />
-
-        <div className="max-h-[calc(80vh-24px)] mt-[76px] overflow-y-scroll overflow-x-hidden rounded-b-lg bg-secondaryBg mx-2 px-3">
+      <Header isVisible={isVisible} bgColor={"bg-secondaryBg"} title={<></>} />
+      <div
+        ref={bodyRef}
+        className="containter bg-secondaryBg relative  rounded-lg overflow-y-auto overflow-x-hidden    px-1.5 mr-2"
+      >
+        <GradientBG height="md:h-[332px]" from={"from-[#303030]"} />
+        <div className="mt-[90px] w-full h-full  max-h-[calc(77vh-25px)] ">
           <Section
             title={"Bài hát mới nhất"}
             type={"song"}
@@ -31,11 +48,6 @@ function Home() {
           />
         </div>
       </div>
-
-      {/* <Section /> */}
-      {/* </div> */}
-
-      {/* <SongBar /> */}
     </MainLayout>
   );
 }

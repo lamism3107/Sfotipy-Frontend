@@ -16,6 +16,7 @@ import {
 import { app } from "../../config/firebase/firebase.config";
 
 import * as authService from "../../services/authServices";
+import * as libraryService from "../../services/libraryServices";
 import { useDispatch } from "react-redux";
 import {
   loginFailure,
@@ -38,7 +39,7 @@ const Signup = () => {
   const validateEmail = () => {
     const emailRegex =
       /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
-    if (!emailRegex.test(formData.email)) {
+    if (!emailRegex.test(formData?.email.trim())) {
       setValidate((prev) => ({
         ...prev,
         email:
@@ -82,8 +83,8 @@ const Signup = () => {
             userCred.getIdToken().then((token) => {
               authService.loginWithGoogle(token).then((data) => {
                 dispatch(loginSuccess(data));
-
                 router.push("/");
+                return data;
               });
             });
           } else {
@@ -95,6 +96,18 @@ const Signup = () => {
     });
   };
 
+  const createLibrary = async (data) => {
+    const initLibrary = {
+      owner: data._id,
+      songs: [],
+      playlists: [],
+      artists: [],
+    };
+
+    libraryService.createNewLibrary(initLibrary).then((res) => {
+      window.localStorage.setItem("library", res.data._id);
+    });
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     validateEmail();
@@ -103,6 +116,7 @@ const Signup = () => {
     if (!validateEmail() || !validatePassword() || !validateName()) {
       return;
     }
+    formData.codeType = "user";
     dispatch(registerStart());
     await authService.register(formData).then((res) => {
       if (res?.success) {
@@ -113,6 +127,7 @@ const Signup = () => {
           delay: 2400,
           autoClose: 3000,
         });
+        createLibrary(res.data);
         setTimeout(() => router.push("/login"), 5500);
       } else {
         dispatch(registerFailure(formData.email));
@@ -183,7 +198,7 @@ const Signup = () => {
                     }
                     setFormData((prev) => ({
                       ...prev,
-                      email: e.target.value,
+                      email: e.target.value.trim(),
                     }));
                   }}
                   required

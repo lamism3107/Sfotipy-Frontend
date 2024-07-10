@@ -5,13 +5,12 @@ import { BsArrowsAngleContract, BsSpeakerFill } from "react-icons/bs";
 import { IoMdSkipForward, IoMdSkipBackward } from "react-icons/io";
 import { HiSpeakerWave } from "react-icons/hi2";
 import { FaPause, FaPlay } from "react-icons/fa";
-import { Context } from "../../context/StateProvider";
-import { actionTypes } from "../../context/actionTypes";
+import Image from "next/image";
 
-const SongBar = () => {
-  const [state, dispatch] = useContext(Context);
-  const { progress, songIndex, currTime, duration, isPlaying, masterSong } =
-    state;
+function SongBar() {
+  // const [state, dispatch] = useContext(Context);
+  // const { progress, songIndex, currTime, duration, isPlaying, masterSong } =
+  //   state;
   // const { masterSong, isPlaying } = useSelector((state) => state.mainSong);
   // const {
   //   progress,
@@ -118,7 +117,13 @@ const SongBar = () => {
     <div className="fixed z-1000 w-full flex items-center justify-between bottom-0 left-0 h-20 bg-black">
       <div className="w-2/12">
         <div className="flex items-center gap-2">
-          <img src="/assets/Arijit.jpg" alt="" className="h-12" />
+          <Image
+            width={50}
+            height={50}
+            src="/assets/playlistDefault.png"
+            alt=""
+            className="h-12"
+          />
           <div>
             <h3 className="text-xs font-medium mb-1">
               {/* {masterSong?.title || "Arijit Singh"} */}
@@ -296,6 +301,6 @@ const SongBar = () => {
       </div>
     </div>
   );
-};
+}
 
 export default SongBar;

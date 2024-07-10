@@ -31,21 +31,6 @@ fetcher.interceptors.request.use(
   }
 );
 
-// let failedQueue = [];
-// let isRefreshing = false;
-
-// const processQueue = (error, token = null) => {
-//   failedQueue.forEach((prom) => {
-//     if (error) {
-//       prom.reject(error);
-//     } else {
-//       prom.resolve(token);
-//     }
-//   });
-
-//   failedQueue = [];
-// };
-
 fetcher.interceptors.response //Config response nhận về
   .use(
     function (response) {
@@ -61,6 +46,6 @@ fetcher.interceptors.response //Config response nhận về
       }
 
       // return Promise.reject(error);
-      throw new Error("Failed to fetch");
+      console.log("check error", error);
     }
   );

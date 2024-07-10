@@ -1,13 +1,7 @@
 "use client";
 // import { getAuth } from "firebase/auth";
 import React, { useEffect, useRef, useState } from "react";
-import {
-  FaAngleLeft,
-  FaAngleRight,
-  FaCrown,
-  FaGreaterThan,
-  FaLessThan,
-} from "react-icons/fa";
+import { FaAngleLeft, FaAngleRight, FaPlay, FaPlus } from "react-icons/fa";
 import { IoMdNotificationsOutline } from "react-icons/io";
 // import { app } from "../../config/firebase.config";
 import { motion } from "framer-motion";
@@ -24,12 +18,13 @@ import {
 import { getAuth } from "firebase/auth";
 import { app } from "../../config/firebase/firebase.config";
 import { fetchMyPlaylistsFailure } from "../../redux/slice/playlist.slice";
+import Image from "next/image";
 
-export default function Header() {
+export default function Header({ isVisible, bgColor, title }) {
   const [showSubNav, setShowSubNav] = useState(false);
+  const headerRef = useRef();
   const router = useRouter();
   const dispatch = useDispatch();
-  const dropdownRef = useRef();
   const [userData, setUserData] = useState(null);
   const currentUser = useSelector((state) => state.auth.login.currentUser);
 
@@ -42,29 +37,27 @@ export default function Header() {
   const handleLogOut = async () => {
     dispatch(logoutStart());
 
-    const res = await authService.logout(currentUser.accessToken, {
-      id: currentUser._id,
+    const res = await authService.logout(userData.accessToken, {
+      id: userData._id,
     });
     if (res) {
       if (res.success) {
         dispatch(logoutSuccess());
         dispatch(registerFailure(""));
         dispatch(fetchMyPlaylistsFailure());
-        console.log("logout success");
-        router.push("/login");
+        router.refresh();
       } else {
         dispatch(logoutFailure());
       }
     }
     const res2 = await authService.logoutGG({
-      id: currentUser._id,
+      id: userData._id,
     });
     if (res2) {
       if (res2.success) {
         dispatch(logoutSuccess());
         dispatch(registerFailure(""));
-        console.log("logout gg success");
-        router.push("/login");
+        router.push("/");
       } else {
         dispatch(logoutFailure());
       }
@@ -74,7 +67,7 @@ export default function Header() {
     firebaseAuth
       .signOut()
       .then(() => {
-        router.push("/login");
+        router.refresh();
         dispatch(logoutSuccess());
         dispatch(registerFailure(""));
       })
@@ -83,23 +76,57 @@ export default function Header() {
       });
   };
 
+  const boxRef = useRef(null);
+  const nameRef = useRef(null);
+  const handleClickOutside = (event) => {
+    if (
+      boxRef.current &&
+      !boxRef.current.contains(event.target) &&
+      !nameRef.current.contains(event.target)
+    ) {
+      setShowSubNav(false);
+    }
+  };
+  useEffect(() => {
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   return (
-    <div className="flex justify-between ml-4 fixed z-50 top-0 right-2 w-[calc(75%-24px)] z-100 py-4 rounded-t-lg mt-2 px-6 secondary_bg items-center ">
+    <div
+      ref={headerRef}
+      className={`flex justify-between ml-4 fixed z-50 top-0 right-2 w-[calc(75%-24px)] z-100 py-4 rounded-t-lg mt-2 px-4 ${
+        isVisible ? `${bgColor} shadow-lg` : " bg-transparent"
+      } items-center `}
+    >
       <div className="flex gap-2 items-center ">
-        <button>
-          <FaAngleLeft className="bg-black text-secondaryText text-4xl p-1  rounded-[50%] " />
+        <button onClick={() => router.back()}>
+          <FaAngleLeft className="bg-black text-secondaryText text-3xl p-1  rounded-[50%] " />
         </button>
-        <button>
-          <FaAngleRight className="bg-black text-secondaryText text-4xl p-1 rounded-[50%] " />
+        <button onClick={() => router.forward()}>
+          <FaAngleRight className="bg-black text-secondaryText text-3xl p-1 rounded-[50%] " />
         </button>
+
+        {isVisible && title}
       </div>
+
       {userData ? (
         <div className="flex items-center justify-center gap-2">
           <button className="p-1 flex items-center justify-center  bg-black w-8 h-8 rounded-full">
             <IoMdNotificationsOutline className="text-xl" />
           </button>
-          <div className="flex items-center ml-auto cursor-pointer gap-2 relative z-100">
-            <img
+          <div
+            ref={nameRef}
+            onClick={() => {
+              setShowSubNav(!showSubNav);
+            }}
+            className="flex items-center ml-auto cursor-pointer gap-2 relative z-100"
+          >
+            <Image
+              width={40}
+              height={40}
               src={
                 userData?.imgURL
                   ? userData?.imgURL
@@ -110,29 +137,35 @@ export default function Header() {
               referrerPolicy="no-refferer"
             />
 
-            <div
+            {/* <div
+              ref={nameRef}
               className="flex flex-col user-nav-container"
-              onClick={() => setShowSubNav(!showSubNav)}
+              onClick={() => {
+                setShowSubNav(!showSubNav);
+              }}
             >
-              <p className="text-secondaryText text-md hover:text-white font-semibold">
+              <p
+                ref={nameRef}
+                className="text-secondaryText text-md hover:text-white font-semibold"
+              >
                 {userData?.name}
               </p>
-            </div>
+            </div> */}
 
             {showSubNav && (
               <motion.div
+                ref={boxRef}
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 50 }}
-                ref={dropdownRef}
-                className="absolute min-w-[140px] z-100 top-14 right-0 w-225 p-3 gap-2 bg-card shadow-lg rounded-lg backdrop-blur-sm flex flex-col"
+                className="absolute min-w-[180px] z-100 top-12 right-0 w-225 p-1  bg-[#282828] shadow-[rgba(0,_0,_0,_0.24)_0px_3px_8px] rounded-md backdrop-blur-sm flex flex-col"
               >
                 <Link href="/user-profile">
-                  <p className="text-base text-textColor hover:font-semibold duration-150 transition-all ease-in-out">
+                  <p className=" rounded-t-md py-2.5 px-3 hover:bg-[#323232] text-secondaryText hover:text-white duration-150 transition-all ease-in-out">
                     Tài khoản
                   </p>
                 </Link>
-                <p className="text-base text-textColor hover:font-semibold duration-150 transition-all ease-in-out">
+                <p className=" py-2.5 px-3  hover:bg-[#323232] text-secondaryText hover:text-white duration-150 transition-all ease-in-out">
                   Hồ sơ
                 </p>
                 <hr />
@@ -140,7 +173,7 @@ export default function Header() {
                 {userData?.role === "admin" && (
                   <>
                     <Link href={"/"}>
-                      <p className="text-base text-textColor hover:font-semibold duration-150 transition-all ease-in-out">
+                      <p className=" py-2.5 px-3  text-secondaryText hover:bg-[#323232] hover:text-white duration-150 transition-all ease-in-out">
                         Dashboard
                       </p>
                     </Link>
@@ -148,7 +181,7 @@ export default function Header() {
                 )}
 
                 <p
-                  className="text-base text-textColor hover:font-semibold duration-150 transition-all ease-in-out"
+                  className=" py-2.5 px-3  text-secondaryText hover:bg-[#323232] hover:text-white duration-150 transition-all rounded-b-md ease-in-out"
                   onClick={handleLogOut}
                 >
                   Đăng xuất

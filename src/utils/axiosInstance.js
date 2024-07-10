@@ -6,7 +6,7 @@ import { loginSuccess } from "../redux/slice/auth.slice";
 
 const config = {
   BASE_URL: "http://localhost:8000/api",
-  TIME_OUT: 30000,
+  TIME_OUT: 10000,
 };
 
 export const createAxios = (stateSuccess) => {
@@ -37,6 +37,8 @@ export const createAxios = (stateSuccess) => {
         store.dispatch(loginSuccess(refreshUser));
         request.headers["Authorization"] = "Bearer " + data.accessToken;
         // request.headers.Authorization = "Bearer" + user?.accessToken;
+      } else {
+        request.headers["Authorization"] = "Bearer " + user?.accessToken;
       }
       return request;
     },
@@ -48,8 +50,6 @@ export const createAxios = (stateSuccess) => {
   newInstance.interceptors.response //Config response nhận về
     .use(
       function (response) {
-        console.log("check response", response);
-
         return response && response.data ? response.data : response;
       },
       function (error) {
@@ -59,8 +59,7 @@ export const createAxios = (stateSuccess) => {
           return error.response.data;
         }
 
-        // return Promise.reject(error);
-        throw new Error("Failed to fetch");
+        return Promise.reject(error);
       }
     );
 
@@ -80,7 +79,6 @@ export const createAxiosRefresh = (ư) => {
   newInstance.interceptors.request.use(
     async function (request) {
       const decodedToken = jwtDecode(refreshTokenCookie);
-      console.log("check decoded token: " + decodedToken);
       // const userID = decodedToken;
       let date = new Date();
 
@@ -90,7 +88,6 @@ export const createAxiosRefresh = (ư) => {
         ...user,
         accessToken: data.accessToken,
       };
-      console.log("check newAccessToken", data.accessToken);
       request.headers["Authorization"] = "Bearer " + data.accessToken;
       // request.headers.Authorization = "Bearer" + user?.accessToken;
       // }

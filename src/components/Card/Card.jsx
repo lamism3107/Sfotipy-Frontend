@@ -2,6 +2,7 @@
 import React, { useContext } from "react";
 import "./Card.css";
 import { FaPause, FaPlay } from "react-icons/fa";
+import Image from "next/image";
 // import { Context } from "../../context/StateProvider";
 // import { actionTypes } from "../../context/actionTypes";
 function Card() {
@@ -57,9 +58,11 @@ function Card() {
   // };
 
   return (
-    <div className="card hover:bg-hoverBG cursor-pointer transition-all ease-out  col-span-1 p-3 rounded-lg overflow-hidden">
+    <div className="card relative z-100 hover:bg-hoverBG cursor-pointer transition-all ease-out  col-span-1 p-3 rounded-lg overflow-hidden">
       <div className="relative w-full">
-        <img
+        <Image
+          width={60}
+          height={60}
           src="/assets/img/albums/808.jpg"
           // {data.imgURL}
           alt=""

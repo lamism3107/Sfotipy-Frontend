@@ -38,7 +38,6 @@ const refreshToken = async (id) => {
     const res = await fetcher.post(`/auth/refreshToken`, id, {
       withCredentials: true,
     });
-    console.log("check res refresh", res.data);
     return res.data;
   } catch (e) {
     console.log("error from fetching", e);
@@ -53,7 +52,6 @@ const logout = async (token, id) => {
         Authorization: `Bearer ${token}`,
       },
     });
-    console.log("check res logout", res);
     return res;
   } catch (err) {
     console.log("error from fetching", err);
@@ -62,7 +60,6 @@ const logout = async (token, id) => {
 const logoutGG = async (id) => {
   try {
     const res = await fetcher.post(`/auth/logoutGG`, id);
-    console.log("check res logoutt", res);
     return res;
   } catch (err) {
     console.log("error from fetching", err);
@@ -85,7 +82,6 @@ const sessionPersist = async (refreshTokenCookie) => {
         },
       }
     );
-    console.log("check resss: ", res);
     return res;
   } catch (err) {
     console.log("error from fetching", err);
