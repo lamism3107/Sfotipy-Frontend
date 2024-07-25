@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { BiAlbum } from "react-icons/bi";
 import { IoAlbumsOutline } from "react-icons/io5";
 import { useDispatch, useSelector } from "react-redux";
-import { openConfirmModal } from "../../redux/slice/system.slice";
+
 import { setCurrentCategory } from "../../redux/slice/library.slice";
+import ConfirmModal from "../ConfirmModal/ConfirmModal";
 
 const userOptions = {
   type: "playlist",
@@ -38,17 +39,18 @@ export const AddMenu = ({
 }) => {
   const user = useSelector((state) => state.auth.login.currentUser);
   const reduxCurrentCategory = useSelector(
-    (state) => state.library.category.currentCategory
+    (state) => state.library.currentCategory
   );
+  const [isOpenConfirmModal, setIsOpenConfirmModal] = useState(false);
   const router = useRouter();
   const dispatch = useDispatch();
-  const boxRef = useRef(null);
+  const addMenuBoxRef = useRef(null);
 
   const handleClickOutside = (event) => {
     if (
-      boxRef.current &&
+      addMenuBoxRef.current &&
       !buttonAddRef.current.contains(event.target) &&
-      !boxRef.current.contains(event.target)
+      !addMenuBoxRef.current.contains(event.target)
     ) {
       setIsOpen((prev) => ({
         add: false,
@@ -64,8 +66,8 @@ export const AddMenu = ({
   }, []);
   return (
     <div
-      className="bg-[#282828] z-1000  w-fit add-menu  absolute top-[calc(100%+8px)] right-0 rounded-md  shadow-[rgba(0,_0,_0,_0.24)_0px_3px_8px]"
-      ref={boxRef}
+      className="bg-[#282828] z-1000  w-fit add-menu  absolute top-[calc(100%+8px)] right-0 rounded-md overflow-hidden  shadow-[rgba(0,_0,_0,_0.24)_0px_3px_8px]"
+      ref={addMenuBoxRef}
     >
       {user ? (
         <>
@@ -74,13 +76,8 @@ export const AddMenu = ({
               {artistOptions.map((item, index) => (
                 <div
                   key={index}
-                  className={`min-w-[190px]  w-full flex items-center ${
-                    index === 0 && "mt-1"
-                  } ${
-                    index === 2 && "mb-1"
-                  } text-md px-2.5 py-2  hover:text-green-400  gap-3 bg-[#282828] hover:bg-[#323232] `}
+                  className={`min-w-[190px]  w-full flex items-center text-md px-2.5 py-2  hover:text-green-400  gap-3 bg-[#282828] hover:bg-[#323232] `}
                   onClick={() => {
-                    dispatch(setCurrentCategory("All"));
                     handleSelect(item.type);
                     setIsOpenMenu(() => {
                       return {
@@ -118,24 +115,26 @@ export const AddMenu = ({
           <div
             className="min-w-[190px]  w-full flex items-center my-1 text-md p-2.5  hover:text-green-400  gap-3 bg-[#282828] hover:bg-[#323232] "
             onClick={() => {
-              dispatch(
-                openConfirmModal({
-                  title: "Tạo mới một playlist",
-                  cancelButton: "Không phải bây giờ",
-                  okButton: "Đăng nhập ",
-
-                  onOk: () => {
-                    router.push("/login");
-                  },
-                  children: "Hãy đăng nhập để tạo vào chia sẻ playlist của bạn",
-                })
-              );
+              setIsOpenConfirmModal(true);
             }}
           >
             <IoAlbumsOutline className="text-lg  hover:text-green-400" />
             <p>Tạo mới một playlist</p>
           </div>
         </>
+      )}
+      {isOpenConfirmModal && (
+        <ConfirmModal
+          setIsOpen={setIsOpenConfirmModal}
+          isOpen={isOpenConfirmModal}
+          title="Tạo mới một playlist"
+          cancelButton="Không phải bây giờ"
+          okButton="Đăng nhập "
+          onOk={() => {
+            router.push("/login");
+          }}
+          children="Hãy đăng nhập để tạo vào chia sẻ playlist của bạn"
+        />
       )}
     </div>
   );

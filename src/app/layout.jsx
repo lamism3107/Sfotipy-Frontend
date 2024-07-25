@@ -1,6 +1,7 @@
 // import { Inter } from "next/font/google";
 
 import StoreProvider from "./Providers/StoreProvider";
+import SWRProvider from "./Providers/SWRProvider";
 import "./styles/globals.css";
 // const inter = Inter({ subsets: ["latin"] });
 
@@ -13,7 +14,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
-        <StoreProvider>{children}</StoreProvider>
+        <StoreProvider>
+          <SWRProvider>{children}</SWRProvider>
+        </StoreProvider>
       </body>
     </html>
   );

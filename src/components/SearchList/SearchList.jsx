@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 import { FiSearch } from "react-icons/fi";
 import { useSelector } from "react-redux";
-import * as libraryServices from "../../services/libraryServices";
+import * as libraryServices from "../../services/library.api";
 import {
   fetchLibraryDataFailure,
   fetchLibraryDataStart,
@@ -10,17 +10,13 @@ import {
 
 function SearchList({ searchValue, setSearchValue }) {
   const reduxCurrentCategory = useSelector(
-    (state) => state.library.category.currentCategory
+    (state) => state.library.currentCategory
   );
 
   const typingTimeoutRef = useRef(null);
 
   const getLibaryData = async () => {
-    dispatch(fetchLibraryDataStart());
-    const res = await libraryServices.getLibraryData(
-      reduxCurrentCategory,
-      "-createdAt"
-    );
+    const res = await libraryServices.getLibraryData(reduxCurrentCategory);
     if (res?.success) {
       let libraryData = res.data.libraryData;
       let categoryList = res.data.categoryList;
@@ -40,13 +36,12 @@ function SearchList({ searchValue, setSearchValue }) {
       clearTimeout(typingTimeoutRef.current);
     }
     typingTimeoutRef.current = setTimeout(() => {
-      console.log("helllo");
+      getLibraryData();
     }, 1000);
   };
   return (
     <div
-      className={`relative w-1/2 flex h-[35x] 
-             py-2 rounded-sm flex-1
+      className={`relative w-1/2 flex h-[35x] rounded-sm flex-1
         } `}
     >
       <div className="w-full rounded-[4px] bg-[#2c2c2c]">

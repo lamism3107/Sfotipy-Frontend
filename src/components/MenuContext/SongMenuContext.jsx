@@ -1,24 +1,17 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { PiQueueBold, PiSecurityCameraThin } from "react-icons/pi";
+import { PiQueueBold } from "react-icons/pi";
 import { FiEdit2, FiPlusCircle } from "react-icons/fi";
 import { IoMdCloseCircleOutline } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
+
+import * as playlistServices from "../../services/playlist.api.js";
+import * as libraryServices from "../../services/library.api.js";
 import {
-  closeSongMenuContext,
-  okConfirmModal,
-  openConfirmModal,
-} from "../../redux/slice/system.slice";
-import * as playlistServices from "../../services/playlistServices";
-import * as libraryServices from "../../services/libraryServices";
-import {
-  createNewAlbumSuccess,
   createNewSongStart,
   createNewSongSuccess,
   deleteAlbum,
   deleteSong,
-  editAlbumStart,
-  editSongStart,
   setCurrentSong,
 } from "../../redux/slice/playlist.slice";
 import { toast } from "react-toastify";
@@ -32,6 +25,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { BiAlbum, BiUserVoice } from "react-icons/bi";
 import { LuListMusic } from "react-icons/lu";
 import { TbTrashX } from "react-icons/tb";
+import ConfirmModal from "../ConfirmModal/ConfirmModal";
 
 export const mySongMenu = [
   {
@@ -101,6 +95,8 @@ export default function SongMenuContext({
   const libraryData = useSelector(
     (state) => state.library.libraryData.libraryData
   );
+  const [isOpenConfirmModal, setIsOpenConfirmModal] = useState(false);
+  const [confirmModalProps, setConfirmModalProps] = useState({});
   const reduxMyAlbums = useSelector((state) => state.playlist.mySongs.myAlbums);
   const reduxMySongs = useSelector((state) => state.playlist.mySongs.mySongs);
   const { target, object, type, top, left } = menuContextProps;
@@ -157,7 +153,7 @@ export default function SongMenuContext({
     };
 
     deleteSongFromDB();
-    dispatch(okConfirmModal());
+    setIsOpenConfirmModal(false);
   };
   //Handle Add playlist
   const handleAddSongAlbum = (type) => {
@@ -168,7 +164,6 @@ export default function SongMenuContext({
           initAlbum(reduxMyAlbums)
         );
         if (res && res.success) {
-          dispatch(createNewAlbumSuccess(res.data));
           dispatch(addItemToLibrary(res.data));
           dispatch(setCurrentSong(res.data));
 
@@ -219,19 +214,17 @@ export default function SongMenuContext({
         handleAddSongAlbum(type);
       }
       if (id === 2) {
-        // dispatch(
-        //   openConfirmModal({
-        //     title: `Loại bỏ khỏi thư viện `,
-        //     onOk: ,
-        //     cancelButton: "Huỷ bỏ",
-        //     okButton: "Loại bỏ",
-        //     children: `Bạn thực sự muốn loại bỏ ${object.name} khỏi thư viện?`,
-        //   })
-        // );
+        setIsOpenConfirmModal(true);
+        setConfirmModalProps({
+          title: "Loại bỏ khỏi thư viện",
+          onOk: handleDeleteSong,
+          cancelButton: "Huỷ bỏ",
+          okButton: "Loại bỏ",
+          children: `Bạn thực sự muốn loại bỏ ${object.name} khỏi thư viện?`,
+        });
       }
     }
   };
-  console.log("check object", object);
   return (
     <div className="absolute inset-0">
       <div

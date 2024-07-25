@@ -16,7 +16,6 @@ import authReducer from "./slice/auth.slice";
 import userReducer from "./slice/user.slice";
 import playlistReducer from "./slice/playlist.slice";
 import songReducer from "./slice/song.slice";
-import systemReducer from "./slice/system.slice";
 import libraryReducer from "./slice/library.slice";
 
 const persistConfig = {
@@ -30,7 +29,6 @@ const reducer = combineReducers({
   user: userReducer,
   playlist: playlistReducer,
   song: songReducer,
-  system: systemReducer,
   library: libraryReducer,
 });
 

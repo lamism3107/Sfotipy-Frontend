@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import * as playlistServices from "../../services/playlistServices";
+import * as playlistServices from "../../services/playlist.api.js";
 import { toast } from "react-toastify";
 import { IoClose } from "react-icons/io5";
 import { BsThreeDots } from "react-icons/bs";
@@ -13,10 +13,23 @@ import {
   editAlbumSuccess,
   editPlaylistCancel,
   editPlaylistSuccess,
+  setCurrentPlaylist,
+  setEditingAlbum,
+  setEditingPlaylist,
 } from "../../redux/slice/playlist.slice";
 import { RiErrorWarningLine } from "react-icons/ri";
 import { editItemOfLibrary } from "../../redux/slice/library.slice";
 import Image from "next/image";
+import {
+  useAlbumLibrary,
+  useAllLibrary,
+  useArtistLibrary,
+  useMyAlbums,
+  useMyPlaylists,
+  usePlaylistLibrary,
+  useSongLibrary,
+} from "../../app/customHooks/librarySWRHooks.js";
+import { mutate } from "swr";
 
 function EditPlaylistModal({ isOpen, setIsOpen }) {
   const dispatch = useDispatch();
@@ -24,11 +37,10 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
   const closeMenuBtn = useRef(null);
   const imgInputRef = useRef(null);
   const reduxEditingPlaylist = useSelector(
-    (state) => state.playlist.editPlaylist.editingPlaylist
+    (state) => state.playlist.editingPlaylist
   );
-  const reduxEditingAlbum = useSelector(
-    (state) => state.playlist.editPlaylist.editingAlbum
-  );
+  const reduxEditingAlbum = useSelector((state) => state.playlist.editingAlbum);
+
   const [imgUploaded, setImgUploaded] = useState(null);
   const [uploadStatusImg, setUploadStatusImg] = useState({ imgUploaded });
   const [item, setItem] = useState(null);
@@ -41,6 +53,17 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
     name: "",
     type: "",
   });
+  const user = useSelector((state) => state.auth.login.currentUser);
+  const reduxCurrentCategory = useSelector(
+    (state) => state.library.currentCategory
+  );
+  const swrMyAlbum = useMyAlbums(user._id);
+  const swrMyPlaylist = useMyPlaylists(user._id);
+  const swrAllLibrary = useAllLibrary();
+  const swrAlbumLibrary = useAlbumLibrary();
+  const swrSongLibrary = useSongLibrary();
+  const swrPlaylistLibrary = usePlaylistLibrary();
+  const swrArtistLibrary = useArtistLibrary();
 
   const handleClickOutsideMenu = (event) => {
     if (
@@ -48,8 +71,6 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
       !menuBarRef.current.contains(event.target) &&
       !closeMenuBtn.current.contains(event.target)
     ) {
-      console.log("closeMenuBtn", closeMenuBtn.current);
-
       setMenuBar(false);
     }
   };
@@ -59,6 +80,7 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
       document.removeEventListener("mousedown", handleClickOutsideMenu);
     };
   }, []);
+
   useEffect(() => {
     if (reduxEditingAlbum) {
       setFormData({
@@ -98,10 +120,10 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
         });
       } else {
         if (item.codeType === "Playlist") {
-          dispatch(editPlaylistCancel());
+          dispatch(setEditingPlaylist(null));
         }
         if (item.codeType === "Album") {
-          dispatch(editAlbumCancel());
+          dispatch(setEditingAlbum(null));
         }
         setFormData({ name: "", description: "" });
         setImgUploaded(null);
@@ -113,10 +135,10 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
       }
     } else {
       if (item.codeType === "Playlist") {
-        dispatch(editPlaylistCancel());
+        dispatch(setEditingPlaylist(null));
       }
       if (item.codeType === "Album") {
-        dispatch(editAlbumCancel());
+        dispatch(setEditingAlbum(null));
       }
       setFormData({ name: "", description: "" });
       setNoti({
@@ -137,13 +159,35 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
     const res = await playlistServices.editMyPlaylistAlbum(updatedItem);
     if (res && res.success) {
       if (item.codeType === "Playlist") {
-        dispatch(editPlaylistSuccess(res.data));
+        swrMyPlaylist.mutate((data) => {
+          const index = data.findIndex((p) => p._id === res.data._id);
+          if (index > -1) {
+            data[index] = updatedItem;
+            return data;
+          }
+          return data;
+        }, false);
+        mutate(`/library/?category=${res.data.codeType}`);
+
+        console.log(await mutate(`/library/?category=${res.data.codeType}`));
+        mutate(`/library/?category=${reduxCurrentCategory}`);
       }
       if (item.codeType === "Album") {
-        dispatch(editAlbumSuccess(res.data));
+        swrMyAlbum.mutate((data) => {
+          const index = data.findIndex((p) => p._id === res.data._id);
+          if (index > -1) {
+            data[index] = updatedItem;
+            return data;
+          }
+          return data;
+        }, false);
+        const newData = await mutate(`/library/?category=${res.data.codeType}`);
+        console.log(newData);
+        mutate(`/library/?category=${reduxCurrentCategory}`);
       }
-      dispatch(editItemOfLibrary(res.data));
+      // dispatch(editItemOfLibrary(res.data));
       setFormData({ name: "", description: "" });
+      dispatch(setCurrentPlaylist(res.data));
       setImgUploaded(null);
       setNoti({
         message: "",
@@ -154,14 +198,12 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
     }
   };
 
-  console.log("check img", imgUploaded);
-  console.log("check object", reduxEditingAlbum);
   return (
     <>
       (
-      <div className=" bg-darkOverlay overflow-y-hidden overflow-x-hidden fixed top-0 right-0 left-0 bottom-0 z-50 justify-center items-center w-full md:inset-0  max-h-full">
+      <div className=" bg-modalOverlay overflow-y-hidden overflow-x-hidden fixed top-0 right-0 left-0 bottom-0 z-50 justify-center items-center w-full md:inset-0  max-h-full">
         <div
-          className={` absolute left-[50%] translate-x-[-50%] top-[50%] w-2/3 lg:w-1/3 overflow-y-hidden translate-y-[-50%]  max-h-full 
+          className={` absolute left-[50%] translate-x-[-50%] top-[50%] w-5/6 lg:w-1/3 overflow-y-hidden translate-y-[-50%]  max-h-full 
             } `}
         >
           <div className="relative bg-[#282828] shadow py-6 pr-6 pl-5 rounded-lg">
@@ -193,26 +235,28 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
               )}
 
               {/* Update Form  */}
-              <div className={` flex gap-2   overflow-y-auto text-black`}>
+              <div
+                className={` flex gap-2   overflow-y-auto text-black items-start`}
+              >
                 {/* Img Area  */}
                 <div
                   // style={{ boxShadow: "0 4px 4px rgba(0,0,0,.3)" }}
-                  className="w-2/5 relative z-20 -ml-1 p-2"
+                  className="w-2/5 pt-[40%]  relative z-20  p-2"
                 >
                   {imgUploaded ? (
-                    <div className="flex  flex-col relative z-20  items-center rounded-md justify-center h-full shadow-[0_3px_10px_rgb(0,0,0,0.2)]">
+                    <div className="flex absolute inset-0 flex-col  z-20  items-center rounded-md justify-center p-2 ">
                       <Image
-                        width={90}
-                        height={90}
+                        width={180}
+                        height={180}
                         src={imgUploaded}
                         alt="playlistImg"
                         className="object-cover w-full h-full rounded-md"
                       />
                       <button
                         ref={closeMenuBtn}
-                        className={`absolute z-20 top-2 right-2 p-2 rounded-full ${
+                        className={`absolute z-20 top-[12px] right-[12px] p-2 rounded-full ${
                           imgUploaded
-                            ? " hover:block text-white bg-darkOverlay"
+                            ? " hover:block text-white bg-darkOverlay hover:bg-white hover:text-black"
                             : "bg-[#202020] text-white hover:bg-white hover:text-black"
                         }   cursor-pointer outline-none border-none hover:shadow-me duration-200 transition-all ease-in-out`}
                         onClick={() => {
@@ -223,59 +267,55 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
                       </button>
                     </div>
                   ) : (
-                    <div className="relative cursor-pointer w-full ">
-                      <label className="w-full h-full cursor-pointer ">
-                        <div className="flex flex-col items-center rounded-md justify-center h-full shadow-[0_3px_10px_rgb(0,0,0,0.2)]">
-                          <div
-                            className="flex flex-col justify-center w-full h-full items-center rounded-md "
-                            onMouseEnter={() => {
-                              setUploadStatusImg(
-                                "https://firebasestorage.googleapis.com/v0/b/spotify-clone-350f3.appspot.com/o/choosePhoto.png?alt=media&token=a99d11d7-78a9-4731-b3fb-25a5651836b3"
-                              );
-                            }}
-                            onMouseLeave={() => {
-                              setUploadStatusImg(
-                                "https://firebasestorage.googleapis.com/v0/b/spotify-clone-350f3.appspot.com/o/playlistDefault.png?alt=media&token=6cc2ab67-36e8-40cc-8ed7-0998d8b31a55"
-                              );
-                            }}
-                          >
-                            <Image
-                              width={230}
-                              height={230}
-                              className="object-cover rounded-md w-full h-full"
-                              src={uploadStatusImg}
-                              alt=""
-                            />
-                          </div>
-                        </div>
-                        <input
-                          ref={imgInputRef}
-                          type="file"
-                          name="upload-file"
-                          id={"imgInputRef"}
-                          //Nếu isImage=true thì chấp nhận mọi file có có type là image. Ngược lại các file có type là audio
-                          accept="image/*"
-                          className="w-0 h-0 hidden absolute z-20 cursor-pointer"
-                          onChange={(e) => {
-                            let fileCategory = "";
-                            if (item.codeType === "Playlist")
-                              fileCategory = "playlistImg";
-                            if (item.codeType === "Album")
-                              fileCategory = "albumImg";
-                            uploadFile(e, fileCategory, setImgUploaded);
-                          }}
+                    <label className="cursor-pointer absolute inset-0 w-full h-full p-2">
+                      <div
+                        className="flex flex-col items-center rounded-md justify-center h-full shadow-[0_3px_10px_rgb(0,0,0,0.2)]"
+                        onMouseEnter={() => {
+                          setUploadStatusImg(
+                            "https://firebasestorage.googleapis.com/v0/b/spotify-clone-350f3.appspot.com/o/choosePhoto.png?alt=media&token=a99d11d7-78a9-4731-b3fb-25a5651836b3"
+                          );
+                        }}
+                        onMouseLeave={() => {
+                          setUploadStatusImg(
+                            "https://firebasestorage.googleapis.com/v0/b/spotify-clone-350f3.appspot.com/o/playlistDefault.png?alt=media&token=6cc2ab67-36e8-40cc-8ed7-0998d8b31a55"
+                          );
+                        }}
+                      >
+                        <Image
+                          width={230}
+                          height={230}
+                          className="object-cover rounded-md w-full h-full"
+                          src={uploadStatusImg}
+                          alt="uploadStatusImg"
                         />
-                        <button
-                          ref={closeMenuBtn}
-                          className="absolute top-2 right-2  p-2 rounded-full bg-[#202020] text-white hover:bg-white hover:text-black cursor-pointer outline-none border-none hover:shadow-me duration-200 transition-all ease-in-out"
-                          onClick={() => {
-                            setMenuBar(!menuBar);
-                          }}
-                        >
-                          <BsThreeDots className="text-md" />
-                        </button>
-                      </label>
-                    </div>
+                      </div>
+                      <input
+                        ref={imgInputRef}
+                        type="file"
+                        name="upload-file"
+                        id={"imgInputRef"}
+                        //Nếu isImage=true thì chấp nhận mọi file có có type là image. Ngược lại các file có type là audio
+                        accept="image/*"
+                        className="w-0 h-0 hidden absolute z-20 cursor-pointer"
+                        onChange={(e) => {
+                          let fileCategory = "";
+                          if (item.codeType === "Playlist")
+                            fileCategory = "playlistImg";
+                          if (item.codeType === "Album")
+                            fileCategory = "albumImg";
+                          uploadFile(e, fileCategory, setImgUploaded);
+                        }}
+                      />
+                      <button
+                        ref={closeMenuBtn}
+                        className="absolute top-[12px] right-[12px]  p-2 rounded-full bg-[#202020] text-white hover:bg-white hover:text-black cursor-pointer outline-none border-none hover:shadow-me duration-200 transition-all ease-in-out"
+                        onClick={() => {
+                          setMenuBar(!menuBar);
+                        }}
+                      >
+                        <BsThreeDots className="text-md" />
+                      </button>
+                    </label>
                   )}
                   {menuBar && (
                     <ul
@@ -283,7 +323,7 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
                       ref={menuBarRef}
                     >
                       <li className="p-2 hover:bg-[#3e3e3e] relative rounded-t-md flex items-center gap-2 z-20 text-white">
-                        <label className="w-full h-full absolute z-20">
+                        <label className="w-full h-full absolute left-0 right-0 z-20">
                           <input
                             ref={imgInputRef}
                             type="file"
@@ -307,7 +347,7 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
                         <SlPicture
                           className={"font-semibold text-md w-[15px] h-[15px]"}
                         />
-                        <p className="flex-1 text-sm font-semibold relative z-20">
+                        <p className="select-none flex-1 text-sm font-semibold relative z-0">
                           Thay đổi hình ảnh
                         </p>
                       </li>
@@ -315,7 +355,7 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
                       <li
                         className="p-2 hover:bg-[#3e3e3e] rounded-b-md flex items-center gap-2 text-white relative z-20"
                         onClick={() => {
-                          deleteFirebaseItem(imgUploaded);
+                          if (imgUploaded) deleteFirebaseItem(imgUploaded);
                           setImgUploaded(null);
                           setMenuBar(false);
                           setUploadStatusImg(
@@ -331,7 +371,7 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
                     </ul>
                   )}
                 </div>
-                <form className="relative z-10 flex-1 flex flex-col  pt-2 gap-4 h-full items-stretch">
+                <form className="pt-2 relative z-10 flex-1 flex flex-col  gap-4 h-full items-stretch">
                   {/* lg:max-h-[190px] max-h-[250px] */}
                   <div className="relative z-10 w-full">
                     <input
@@ -355,7 +395,7 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
                       className="block w-full py-2 px-3 text-sm  [&:focus+label]:block bg-[#3e3e3e] outline-none text-white focus:border focus:border-gray-500 rounded-md "
                     />
                     <label
-                      for="large-input"
+                      htmlFor="large-input"
                       className=" hidden absolute -top-1 left-2 mb-2  text-[12px] font-semibold bg-[#282828] leading-[0.5]  text-secondaryText dark:text-white"
                     >
                       Tên
@@ -370,10 +410,10 @@ function EditPlaylistModal({ isOpen, setIsOpen }) {
                       }}
                       id="large-input"
                       placeholder={`Thêm mô tả`}
-                      className="relative z-10 block w-full py-2 px-3 text-sm  [&:focus+label]:block bg-[#3e3e3e] outline-none text-white focus:border focus:border-gray-500 rounded-md  lg:h-[120px] "
+                      className="relative z-10 block w-full py-2 px-3 text-sm  [&:focus+label]:block bg-[#3e3e3e] outline-none text-white focus:border focus:border-gray-500 rounded-md   "
                     />
                     <label
-                      for="large-input"
+                      htmlFor="large-input"
                       className=" hidden absolute z-10 -top-1 left-2 mb-2  text-[12px] font-semibold bg-[#282828] leading-[0.5]  text-secondaryText dark:text-white"
                     >
                       Mô tả

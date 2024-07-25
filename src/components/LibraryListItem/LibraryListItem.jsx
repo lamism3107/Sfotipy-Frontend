@@ -1,19 +1,12 @@
 "use client";
-
-import React, { useEffect, useRef, useState } from "react";
-import FilterMenu from "../FilterMenu/FilterMenu";
+import React, { useRef, useState, memo } from "react";
 import { FiMenu } from "react-icons/fi";
-import { LuDot } from "react-icons/lu";
 import SearchLibrary from "../SearchLibrary/SearchLibrary";
 import { formatDate } from "../../utils/helperFuncs";
-import * as playlistServices from "../../services/playlistServices";
-import * as libraryServices from "../../services/libraryServices";
+import * as playlistServices from "../../services/playlist.api.js";
+import * as libraryServices from "../../services/library.api.js";
 import {
-  createNewAlbumSuccess,
   createNewPlaylistStart,
-  createNewPlaylistSuccess,
-  fetchMyAlbumsSuccess,
-  fetchMyPlaylistsSuccess,
   setCurrentPlaylist,
 } from "../../redux/slice/playlist.slice";
 import {
@@ -23,23 +16,18 @@ import {
   userOptions,
 } from "../../constants/initValue";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  cancelConfirmModal,
-  openConfirmModal,
-} from "../../redux/slice/system.slice";
+
 import { usePathname, useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import {
-  addItemToLibrary,
-  fetchLibraryDataSuccess,
-} from "../../redux/slice/library.slice";
 import PlaylistMenuContext from "../MenuContext/PlaylistMenuContext";
 import EditPlaylistModal from "../EditPlaylistModal/EditPlaylistModal";
 import Link from "next/link";
 import Image from "next/image";
+import ConfirmModal from "../ConfirmModal/ConfirmModal";
+import SortLibraryMenu from "../SortLibraryMenu/SortLibraryMenu.jsx";
+import useSWR from "swr";
 
 function LibraryListItem({
-  // libraryData,
   myAlbums,
   myPlaylists,
   user,
@@ -48,33 +36,42 @@ function LibraryListItem({
 }) {
   const dispatch = useDispatch();
   const router = useRouter();
-  const [filterOpt, setFilterOpt] = useState({
-    title: "Thêm gần đây",
-    query: "-createdAt",
-  });
   const buttonFilterRef = useRef(null);
   const pathname = usePathname();
   const [isOpenPlaylistMenuContext, setIsOpenPlaylistMenuContext] =
     useState(false);
   const [isOpenEditModal, setIsOpenEditModal] = useState(false);
+  const [isOpenConfirmModal, setIsOpenConfirmModal] = useState(false);
+  const [confirmModalProps, setConfirmModalProps] = useState({});
   const [menuContextProps, setPlaylistMenuContextProps] = useState(null);
   const [searchValue, setSearchValue] = useState("");
   const [isFoundSearchData, setIsFoundSearchData] = useState(true);
-  const nameRef = useRef();
-  const libraryData = useSelector((state) => state.library.libraryData);
-  const reduxCategoryList = useSelector(
-    (state) => state.library.category.categoryList
-  );
+  const [foundListData, setFoundListData] = useState([]);
+
   const reduxCurrentCategory = useSelector(
-    (state) => state.library.category.currentCategory
+    (state) => state.library.currentCategory
+  );
+  const reduxCurrentSort = useSelector((state) => state.library.currentSort);
+  const {
+    data: libraryData,
+    isLoading: isLoadingLibraryData,
+    mutate: mutateLibraryData,
+  } = useSWR(
+    `/library/?category=${reduxCurrentCategory}`,
+    () => libraryServices.getLibraryData(reduxCurrentCategory),
+    {
+      dedupingInterval: 3000,
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+    }
   );
 
-  const showSearchAndFilter = () => {
+  const showSearchAndSort = () => {
     if (libraryData?.libraryData?.length > 0) {
       return (
-        <div className="flex  items-center justify-between pr-2  z-10  mb-3 ">
+        <div className="flex  items-center pr-4 justify-between   z-10  mb-3 ">
           <SearchLibrary
-            filterOpt={filterOpt}
+            setFoundListData={setFoundListData}
             setIsFoundSearchData={setIsFoundSearchData}
             searchValue={searchValue}
             setSearchValue={setSearchValue}
@@ -83,7 +80,6 @@ function LibraryListItem({
             ref={buttonFilterRef}
             className="cursor-pointer relative  z-1 outline-none [&_p]:hover:text-white  [&_svg]:hover:text-white transition-all ease-out duration-200  bg-transparent  flex gap-1.5 items-center"
             onClick={() => {
-              console.log("ditconme");
               setIsOpenMenu((prev) => ({
                 add: false,
                 filter: !prev.filter,
@@ -91,16 +87,16 @@ function LibraryListItem({
             }}
           >
             <p className="text-sm font-semibold text-secondaryText ">
-              {filterOpt.title}
+              {reduxCurrentSort.title}
             </p>
             <FiMenu className="text-xl text-secondaryText" />
             {isOpenMenu.filter && (
-              <FilterMenu
+              <SortLibraryMenu
+                mutateLibraryData={mutateLibraryData}
+                libraryData={libraryData}
                 buttonFilterRef={buttonFilterRef}
                 isOpen={isOpenMenu}
                 setIsOpen={setIsOpenMenu}
-                setFilterOpt={setFilterOpt}
-                filterOpt={filterOpt}
               />
             )}
           </button>
@@ -108,196 +104,304 @@ function LibraryListItem({
       );
     }
   };
+  console.log("isFoundData", isFoundSearchData);
+  console.log("searchValue", searchValue);
+  console.log("foundDat", foundListData);
+
   const showListItem = () => {
-    if (libraryData?.libraryData.length > 0) {
-      const isActived = pathname.substring(pathname.lastIndexOf("/") + 1);
+    if (isLoadingLibraryData) {
       return (
-        <div className="flex flex-col  mt-3">
-          {searchValue !== "" && !isFoundSearchData && (
-            <div className="min-h-[300px] flex flex-col items-center justify-center">
-              <p className="font-bold mb-3">
-                Không thể tìm thấy "{searchValue}"
-              </p>
-              <p className="text-sm">Hãy thử tìm kiếm bằng từ khoá khác</p>
+        <div className="flex flex-col bg-[#121212]  mt-3">
+          <div
+            className={` flex gap-2 w-full animate-pulse justify-between rounded-md   `}
+          >
+            <div className="cursor-pointer flex-grow w-5/7 rounded-md py-2 px-2 gap-3.5 flex item-center justify-start ">
+              <div className="w-[50px] h-[50px] rounded-[4px] bg-[#393939]"></div>
+              <div className="flex flex-col gap-2  flex-1 pr-2">
+                <p className="text-white text-md h-5 w-1/2 mb-[2px] rounded-[4px] bg-[#393939]">
+                  {" "}
+                </p>
+                <div className="flex items-center h-5  bg-[#393939] rounded-[4px] w-full mr-2"></div>
+              </div>
             </div>
-          )}
-          {isFoundSearchData && searchValue === "" && (
-            <>
-              {libraryData?.libraryData.map((item, id) => {
-                const length = libraryData?.libraryData.length;
-                return (
-                  <Link
-                    href={`/${item.codeType.toLowerCase()}/${item._id}`}
-                    onClick={() => {
-                      if (
-                        item.codeType === "Playlist" ||
-                        item.codeType === "Album"
-                      ) {
-                        dispatch(setCurrentPlaylist(item));
-                      }
-                    }}
-                    key={id}
-                    className={`${
-                      item._id === isActived &&
-                      "bg-tertiaryBg  hover:bg-[#393939]"
-                    } flex gap-2 w-full  justify-between hover rounded-md hover:bg-[#1a1a1a]  ${
-                      id === length - 1 && "mb-3"
-                    }`}
-                    onContextMenu={(e) =>
-                      handleContextMenu(e, item.codeType, item)
-                    }
-                  >
-                    <div className="cursor-pointer flex-grow w-5/7 rounded-md py-1.5 px-2 gap-3.5 flex item-center justify-start ">
-                      <div className="w-[50px] h-[50px]">
-                        <Image
-                          width={200}
-                          height={200}
-                          className="object-cover  h-full rounded-md"
-                          src={
-                            item.thumbnail === ""
-                              ? "https://firebasestorage.googleapis.com/v0/b/spotify-clone-350f3.appspot.com/o/playlistDefault.png?alt=media&token=99a06d44-2dee-412e-b659-695b591af95c"
-                              : item.thumbnail
-                          }
-                        />
-                      </div>
-                      <div className="flex flex-col  my-1 flex-1">
-                        <p className="text-white "> {item.name}</p>
-                        <div className="flex items-center  ">
-                          {reduxCurrentCategory === "All" && (
-                            <div className="text-sm flex items-center text-secondaryText leading-4">
-                              {item.codeType}
-                              <span className="text-md px-1">-</span>
-                            </div>
-                          )}
-
-                          <p className="text-sm text-secondaryText ">
-                            {item?.owner?.name}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </>
-          )}
-          {isFoundSearchData && searchValue !== "" && (
-            <>
-              {libraryData?.libraryData.map((item, id) => {
-                const length = libraryData?.libraryData.length;
-                const regex = new RegExp(searchValue, "gi");
-                let replaceString = item.name.replace(
-                  regex,
-                  `<mark style="background-color:#2e77d0; color: #fff; border-radius:4px; padding: 0 1px;">${searchValue}</mark>`
-                );
-                return (
-                  <Link
-                    href={`/${item.codeType.toLowerCase()}/${item._id}`}
-                    onClick={() => {
-                      if (
-                        item.codeType === "Playlist" ||
-                        item.codeType === "Album"
-                      ) {
-                        dispatch(setCurrentPlaylist(item));
-                      }
-                    }}
-                    key={id}
-                    className={`${
-                      item._id === isActived &&
-                      "bg-tertiaryBg  hover:bg-[#393939]"
-                    } flex gap-2 w-full  justify-between hover rounded-md hover:bg-[#1a1a1a]  ${
-                      id === length - 1 && "mb-3"
-                    }`}
-                    onContextMenu={(e) =>
-                      handleContextMenu(e, item.codeType, item)
-                    }
-                  >
-                    <div className="cursor-pointer flex-grow w-5/7 rounded-md py-1.5 px-2 gap-3.5 flex item-center justify-start ">
-                      <div className="w-[50px] h-[50px]">
-                        <Image
-                          width={200}
-                          height={200}
-                          className="object-cover  h-full rounded-md"
-                          src={
-                            item.thumbnail === ""
-                              ? "https://firebasestorage.googleapis.com/v0/b/spotify-clone-350f3.appspot.com/o/playlistDefault.png?alt=media&token=99a06d44-2dee-412e-b659-695b591af95c"
-                              : item.thumbnail
-                          }
-                        />
-                      </div>
-                      <div className="flex flex-col  my-1 flex-1">
-                        <p
-                          dangerouslySetInnerHTML={{ __html: replaceString }}
-                          className="text-white "
-                        >
-                          {/* {() => setReplaceName()} */}
-                          {/* {replaceString} */}
-                        </p>
-                        <div className="flex items-center  ">
-                          {reduxCurrentCategory === "All" && (
-                            <div className="text-sm flex items-center text-secondaryText leading-4">
-                              {item.codeType}
-                              <span className="text-md px-1">-</span>
-                            </div>
-                          )}
-
-                          <p className="text-sm text-secondaryText ">
-                            {item?.owner?.name}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-            </>
-          )}
+          </div>
+          <div
+            className={` flex gap-2 w-full animate-pulse justify-between rounded-md   `}
+          >
+            <div className="cursor-pointer flex-grow w-5/7 rounded-md py-2 px-2 gap-3.5 flex item-center justify-start ">
+              <div className="w-[50px] h-[50px] rounded-[4px] bg-[#393939]"></div>
+              <div className="flex flex-col gap-2  flex-1 pr-2">
+                <p className="text-white text-md h-5 w-1/2 mb-[2px] rounded-[4px] bg-[#393939]">
+                  {" "}
+                </p>
+                <div className="flex items-center h-5  bg-[#393939] rounded-[4px] w-full mr-2"></div>
+              </div>
+            </div>
+          </div>
+          <div
+            className={` flex gap-2 w-full animate-pulse justify-between rounded-md   `}
+          >
+            <div className="cursor-pointer flex-grow w-5/7 rounded-md py-2 px-2 gap-3.5 flex item-center justify-start ">
+              <div className="w-[50px] h-[50px] rounded-[4px] bg-[#393939]"></div>
+              <div className="flex flex-col gap-2  flex-1 pr-2">
+                <p className="text-white text-md h-5 w-1/2 mb-[2px] rounded-[4px] bg-[#393939]">
+                  {" "}
+                </p>
+                <div className="flex items-center h-5  bg-[#393939] rounded-[4px] w-full mr-2"></div>
+              </div>
+            </div>
+          </div>
+          <div
+            className={` flex gap-2 w-full animate-pulse justify-between rounded-md   `}
+          >
+            <div className="cursor-pointer flex-grow w-5/7 rounded-md py-2 px-2 gap-3.5 flex item-center justify-start ">
+              <div className="w-[50px] h-[50px] rounded-[4px] bg-[#393939]"></div>
+              <div className="flex flex-col gap-2  flex-1 pr-2">
+                <p className="text-white text-md h-5 w-1/2 mb-[2px] rounded-[4px] bg-[#393939]">
+                  {" "}
+                </p>
+                <div className="flex items-center h-5  bg-[#393939] rounded-[4px] w-full mr-2"></div>
+              </div>
+            </div>
+          </div>
         </div>
       );
     } else {
-      if (user.role === "artist") {
+      if (libraryData?.libraryData?.length > 0) {
+        const isActived = pathname.substring(pathname.lastIndexOf("/") + 1);
         return (
-          <div className="flex flex-col gap-2 ">
-            {artistOptions.map((item, id) => (
-              <div
-                key={id}
-                className={`${
-                  id === 2 && "mb-5"
-                } tertiary_bg rounded-lg py-5 px-4 `}
-              >
-                <p className="leading-7 mb-1 font-bold text-md ">
-                  {item.title}
+          <div className="flex flex-col  mt-3">
+            {searchValue !== "" && !isFoundSearchData && (
+              <div className="min-h-[300px] flex flex-col items-center justify-center">
+                <p className="font-bold mb-3">
+                  Không thể tìm thấy "{searchValue}"
                 </p>
-                <p className=" text-sm text-semibold">{item.desc}</p>
-                <button
-                  className="cursor-pointer rounded-full text-black mt-4 px-3 py-1.5 bg-white font-semibold text-sm hover:scale-105 transiton-all ease-out duration-150"
-                  onClick={() => {
-                    handleClickButtonAdd(item.type);
-                  }}
-                >
-                  {item.button}
-                </button>
+                <p className="text-sm">Hãy thử tìm kiếm bằng từ khoá khác</p>
               </div>
-            ))}
+            )}
+            {isFoundSearchData && searchValue === "" && (
+              <>
+                {libraryData?.libraryData?.map((item, id) => {
+                  const length = libraryData?.libraryData?.length;
+                  return (
+                    <Link
+                      href={`/${item.codeType.toLowerCase()}/${item._id}`}
+                      scroll={false}
+                      key={id}
+                      onClick={() => {
+                        if (
+                          item.codeType === "Playlist" ||
+                          item.codeType === "Album"
+                        ) {
+                          dispatch(setCurrentPlaylist(item));
+                        }
+                      }}
+                      className={`${
+                        item._id === isActived &&
+                        "bg-tertiaryBg  hover:bg-[#393939]"
+                      } flex gap-2 w-full  justify-between hover rounded-md hover:bg-[#1a1a1a]  ${
+                        id === length - 1 && "mb-3"
+                      }`}
+                      onContextMenu={(e) =>
+                        handleContextMenu(e, item.codeType, item)
+                      }
+                    >
+                      <div className="cursor-pointer flex-grow w-5/7 rounded-md py-2 px-2 gap-3.5 flex item-center justify-start ">
+                        <div className="w-[50px] h-[50px]">
+                          <Image
+                            alt="thumbnail"
+                            width={200}
+                            height={200}
+                            className="object-cover  h-full rounded-[4px]"
+                            src={
+                              !item?.thumbnail
+                                ? "https://firebasestorage.googleapis.com/v0/b/spotify-clone-350f3.appspot.com/o/playlistDefault.png?alt=media&token=99a06d44-2dee-412e-b659-695b591af95c"
+                                : item?.thumbnail
+                            }
+                          />
+                        </div>
+                        <div className="flex flex-col  my-1 flex-1">
+                          <p className="text-white text-md mb-[2px]">
+                            {" "}
+                            {item.name}
+                          </p>
+                          <div className="flex items-center  ">
+                            {reduxCurrentCategory === "All" && (
+                              <div className="text-[14px] flex items-center text-secondaryText leading-4">
+                                {item.codeType}
+                                <span className="text-md px-1">-</span>
+                              </div>
+                            )}
+
+                            <p className="text-[14px] text-secondaryText leading-4">
+                              {item.codeType === "Song" ? (
+                                <>
+                                  {(function () {
+                                    let artistsName = "";
+                                    let tmp = item.artists.map((artist) => {
+                                      return artist.name;
+                                    });
+
+                                    artistsName = tmp.join(", ").toString();
+                                    return artistsName;
+                                  })()}
+                                </>
+                              ) : (
+                                <>{item?.owner?.name}</>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </>
+            )}
+            {isFoundSearchData && searchValue !== "" && (
+              <>
+                {foundListData?.map((item, id) => {
+                  const length = foundListData?.length;
+                  let tmpStr = item.name;
+                  tmpStr = tmpStr.toLowerCase();
+                  let index = tmpStr.indexOf(searchValue.toLowerCase());
+                  let subString = item.name.substring(
+                    index,
+                    index + searchValue.length
+                  );
+
+                  const regex = new RegExp(searchValue, "i");
+                  let replaceString = item.name.replace(
+                    regex,
+                    `<mark style="background-color:#2e77d0; color: #fff; border-radius:4px; padding: 0 1px;">${subString}</mark>`
+                  );
+                  return (
+                    <Link
+                      href={`/${item.codeType.toLowerCase()}/${item._id}`}
+                      onClick={() => {
+                        if (
+                          item.codeType === "Playlist" ||
+                          item.codeType === "Album"
+                        ) {
+                          dispatch(setCurrentPlaylist(item));
+                        }
+                      }}
+                      key={id}
+                      className={`${
+                        item._id === isActived &&
+                        "bg-tertiaryBg  hover:bg-[#393939]"
+                      } flex gap-2 w-full  justify-between hover rounded-md hover:bg-[#1a1a1a]  ${
+                        id === length - 1 && "mb-3"
+                      }`}
+                      onContextMenu={(e) =>
+                        handleContextMenu(e, item.codeType, item)
+                      }
+                    >
+                      <div className="cursor-pointer flex-grow w-5/7 rounded-md py-2 px-2 gap-3.5 flex item-center justify-start ">
+                        <div className="w-[50px] h-[50px]">
+                          <Image
+                            width={200}
+                            height={200}
+                            className="object-cover  h-full rounded-md"
+                            src={
+                              !item?.thumbnail
+                                ? "https://firebasestorage.googleapis.com/v0/b/spotify-clone-350f3.appspot.com/o/playlistDefault.png?alt=media&token=99a06d44-2dee-412e-b659-695b591af95c"
+                                : item.thumbnail
+                            }
+                            alt="thumbnail"
+                          />
+                        </div>
+                        <div className="flex flex-col  my-1 flex-1">
+                          <p
+                            dangerouslySetInnerHTML={{
+                              __html: replaceString,
+                            }}
+                            className="text-white text-md"
+                          >
+                            {/* {() => setReplaceName()} */}
+                            {/* {replaceString} */}
+                          </p>
+                          <div className="flex items-center  ">
+                            {reduxCurrentCategory === "All" && (
+                              <div className="text-[14px] flex items-center text-secondaryText leading-4">
+                                {item.codeType}
+                                <span className="text-md px-1">-</span>
+                              </div>
+                            )}
+
+                            <p className="text-[14px] text-secondaryText ">
+                              {item.codeType === "Song" ? (
+                                <>
+                                  {(function () {
+                                    let artistsName = "";
+                                    let tmp = item.artists.map((artist) => {
+                                      return artist.name;
+                                    });
+                                    artistsName = tmp.join(", ").toString();
+                                    return artistsName;
+                                  })()}
+                                </>
+                              ) : (
+                                <>{item?.owner?.name}</>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </>
+            )}
           </div>
         );
       } else {
-        return (
-          <>
-            {userOptions.map((item, id) => (
-              <div key={id} className="   tertiary_bg rounded-lg py-5 px-4 ">
-                <p className="font-bold text-md leading-7 mb-1">{item.title}</p>
-                <p className=" text-sm text-semibold">{item.desc}</p>
-                <button
-                  className="rounded-full text-black mt-4 px-3 py-1.5 bg-white font-semibold text-sm hover:scale-105 transiton-all ease-out duration-150"
-                  onClick={() => handleClickButtonAdd(item.type)}
+        if (user.role === "artist") {
+          return (
+            <div className="flex flex-col gap-2 ">
+              {artistOptions.map((item, id) => (
+                <div
+                  key={id}
+                  className={`${
+                    id === 2 && "mb-5"
+                  } tertiary_bg rounded-lg py-5 px-4 `}
                 >
-                  {item.button}
-                </button>
-              </div>
-            ))}
-          </>
-        );
+                  <p className="leading-7 mb-1 font-bold text-md ">
+                    {item.title}
+                  </p>
+                  <p className=" text-sm text-semibold">{item.desc}</p>
+                  <button
+                    className="cursor-pointer rounded-full text-black mt-4 px-3 py-1.5 bg-white font-semibold text-sm hover:scale-105 transiton-all ease-out duration-150"
+                    onClick={() => {
+                      handleClickButtonAdd(item.type);
+                    }}
+                  >
+                    {item.button}
+                  </button>
+                </div>
+              ))}
+            </div>
+          );
+        } else {
+          return (
+            <>
+              {userOptions.map((item, id) => (
+                <div key={id} className="   tertiary_bg rounded-lg py-5 px-4 ">
+                  <p className="font-bold text-md leading-7 mb-1">
+                    {item.title}
+                  </p>
+                  <p className=" text-sm text-semibold">{item.desc}</p>
+                  <button
+                    className="rounded-full text-black mt-4 px-3 py-1.5 bg-white font-semibold text-sm hover:scale-105 transiton-all ease-out duration-150"
+                    onClick={() => handleClickButtonAdd(item.type)}
+                  >
+                    {item.button}
+                  </button>
+                </div>
+              ))}
+            </>
+          );
+        }
       }
     }
   };
@@ -310,8 +414,6 @@ function LibraryListItem({
           initAlbum(myAlbums)
         );
         if (res && res.success) {
-          dispatch(createNewAlbumSuccess(res.data));
-          dispatch(addItemToLibrary(res.data));
           dispatch(setCurrentPlaylist(res.data));
 
           const res2 = await libraryServices.addAlbumPlaylistToLibrary(
@@ -332,10 +434,6 @@ function LibraryListItem({
           initPlaylist(myPlaylists)
         );
         if (res && res.success) {
-          dispatch(addItemToLibrary(res.data));
-          dispatch(createNewPlaylistSuccess(res.data));
-          dispatch(setCurrentPlaylist(res.data));
-
           const res2 = await libraryServices.addAlbumPlaylistToLibrary(
             res.data._id
           );
@@ -367,7 +465,7 @@ function LibraryListItem({
   };
   const containerCss = () => {
     if (user) {
-      if (libraryData.libraryData?.length > 0) {
+      if (libraryData?.libraryData?.length > 0) {
         return "mt-[16px]  h-[368px]";
       } else {
         return " h-[408px]";
@@ -382,12 +480,12 @@ function LibraryListItem({
       <div
         className={`relative z-1 your_library 
       ${containerCss()}  
-      overflow-y-scroll`}
+      overflow-y-auto`}
       >
         {user ? (
           <>
-            {showSearchAndFilter()}
-            <>{showListItem()}</>
+            {showSearchAndSort()}
+            {showListItem()}
           </>
         ) : (
           <div className=" mt-2 tertiary_bg rounded-lg py-5 px-4 ">
@@ -399,20 +497,16 @@ function LibraryListItem({
             </p>
             <button
               onClick={() => {
-                dispatch(
-                  openConfirmModal({
-                    title: "Tạo mới một playlist",
-                    cancelButton: "Không phải bây giờ",
-                    okButton: "Đăng nhập ",
-
-                    onOk: () => {
-                      router.push("/login");
-                      dispatch(cancelConfirmModal());
-                    },
-                    children:
-                      "Hãy đăng nhập để tạo vào chia sẻ playlist của bạn",
-                  })
-                );
+                setIsOpenConfirmModal(true);
+                setConfirmModalProps({
+                  title: "Tạo mới một playlist",
+                  cancelButton: "Không phải bây giờ",
+                  okButton: "Đăng nhập ",
+                  onOk: () => {
+                    router.push("/login");
+                  },
+                  children: "Hãy đăng nhập để tạo vào chia sẻ playlist của bạn",
+                });
               }}
               className="rounded-full text-black mt-4 px-3 py-1.5 bg-white font-semibold text-sm hover:scale-105 transiton-all ease-out duration-150"
             >
@@ -423,6 +517,10 @@ function LibraryListItem({
       </div>
       {isOpenPlaylistMenuContext && (
         <PlaylistMenuContext
+          isOpenConfirmModal={isOpenConfirmModal}
+          setIsOpenConfirmModal={setIsOpenConfirmModal}
+          confirmModalProps={confirmModalProps}
+          setConfirmModalProps={setConfirmModalProps}
           isOpenEditModal={isOpenEditModal}
           setIsOpenEditModal={setIsOpenEditModal}
           setIsOpenPlaylistMenuContext={setIsOpenPlaylistMenuContext}
@@ -435,8 +533,19 @@ function LibraryListItem({
           setIsOpen={setIsOpenEditModal}
         />
       )}
+      {isOpenConfirmModal && (
+        <ConfirmModal
+          setIsOpen={setIsOpenConfirmModal}
+          isOpen={isOpenConfirmModal}
+          title={confirmModalProps.title}
+          cancelButton={confirmModalProps.cancelButton}
+          okButton={confirmModalProps.okButton}
+          onOk={confirmModalProps.onOk}
+          children={confirmModalProps.children}
+        />
+      )}
     </div>
   );
 }
 
-export default LibraryListItem;
+export default memo(LibraryListItem);

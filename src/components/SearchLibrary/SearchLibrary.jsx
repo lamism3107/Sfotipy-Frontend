@@ -1,29 +1,43 @@
 import React, { useEffect, useRef, useState } from "react";
 import { FiSearch } from "react-icons/fi";
 import { useDispatch, useSelector } from "react-redux";
-import * as libraryServices from "../../services/libraryServices";
+import * as libraryServices from "../../services/library.api";
 import {
   fetchLibraryDataFailure,
   fetchLibraryDataStart,
   fetchLibraryDataSuccess,
 } from "../../redux/slice/library.slice";
+import useSWR, { mutate } from "swr";
 
 function SearchLibrary({
-  filterOpt,
   searchValue,
   setSearchValue,
   setIsFoundSearchData,
+  setFoundListData,
 }) {
   const dispatch = useDispatch();
   const iconRef = useRef();
   const inputRef = useRef();
   const reduxCurrentCategory = useSelector(
-    (state) => state.library.category.currentCategory
+    (state) => state.library.currentCategory
   );
-  const reduxCategoryList = useSelector(
-    (state) => state.library.category.categoryList
-  );
+  const reduxCurrentSort = useSelector((state) => state.library.currentSort);
   const [openInput, setOpenInput] = useState(false);
+
+  const {
+    data: libraryData,
+    isLoading: isLoadingLibraryData,
+    mutate: mutateLibraryData,
+  } = useSWR(
+    `/library/?category=${reduxCurrentCategory}`,
+    () => libraryServices.getLibraryData(reduxCurrentCategory),
+    {
+      dedupingInterval: 3000,
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+    }
+  );
+
   const openSearchInput = () => {
     setOpenInput(true);
     inputRef.current.focus();
@@ -46,46 +60,73 @@ function SearchLibrary({
     if (reduxCurrentCategory === "Playlist") {
       return "Tìm kiếm playlist";
     }
-  };
-
-  const getLibaryData = async () => {
-    dispatch(fetchLibraryDataStart());
-    const res = await libraryServices.getLibraryData(
-      reduxCurrentCategory,
-      filterOpt
-    );
-    if (res?.success) {
-      let libraryData = res.data.libraryData;
-      let categoryList = res.data.categoryList;
-      dispatch(
-        fetchLibraryDataSuccess({
-          libraryData: libraryData,
-          categoryList: categoryList,
-        })
-      );
-    } else {
-      dispatch(fetchLibraryDataFailure());
+    if (reduxCurrentCategory === "Artist") {
+      return "Tìm kiếm nghệ sĩ";
     }
   };
+
+  //   `/library/?category=${reduxCurrentCategory}`,
+  //   () => libraryServices.getLibraryData(reduxCurrentCategory),
+  //   {
+  //     //Loại bỏ các request trùng lặp có cùng key trong khoảng 5s
+  //     revalidateOnFocus: false,
+  //     revalidateOnMount: false,
+  //     // revalidateEvents: false,
+  //     revalidateIfStale: true,
+  //     onError: (...args) => {
+  //       dispatch(fetchMyAlbumsFailure());
+  //     },
+  //     onSuccess: (libraryData) => {
+  //       console.log("success");
+  //       dispatch(
+  //         fetchLibraryDataSuccess({
+  //           libraryData: libraryData.libraryData,
+  //           categoryList: libraryData.categoryList,
+  //         })
+  //       );
+  //     },
+  //   }
+  // );
+
+  // const getLibaryData = async () => {
+  //   const res = await libraryServices.getLibraryData(reduxCurrentCategory);
+  //   if (res?.success) {
+  //     dispatch(
+  //       fetchLibraryDataSuccess({
+  //         libraryData: res.data.libraryData,
+  //         categoryList: res.data.categoryList,
+  //       })
+  //     );
+  //   } else {
+  //     dispatch(fetchLibraryDataFailure());
+  //   }
+  // };
   //Search Item By Name
   const searchItemByName = async (name) => {
-    console.log("reduxCurrentCategory", reduxCurrentCategory);
-    if (searchValue !== "") {
+    if (name !== "") {
+      let sortBy = reduxCurrentSort.sortBy;
+      let sort = reduxCurrentSort.sort;
+      let categoryURL = "";
+      if (reduxCurrentCategory !== "All") {
+        categoryURL = `${reduxCurrentCategory.toLowerCase()}s`;
+      } else {
+        categoryURL = "all";
+      }
       const listData = await libraryServices.searchItemByName(
-        reduxCurrentCategory,
-        name
+        categoryURL,
+        name,
+        sort,
+        sortBy
       );
+
       if (listData && listData.success) {
         if (listData.data.length > 0) {
+          console.log(listData.data);
           setIsFoundSearchData(true);
-          dispatch(
-            fetchLibraryDataSuccess({
-              libraryData: listData.data,
-              categoryList: reduxCategoryList,
-            })
-          );
+          setFoundListData(listData.data);
         } else {
           setIsFoundSearchData(false);
+          setFoundListData([]);
         }
       }
     }
@@ -96,14 +137,18 @@ function SearchLibrary({
       clearTimeout(typingTimeoutRef.current);
     }
     typingTimeoutRef.current = setTimeout(() => {
-      console.log("searchValue", e.target.value);
       if (e.target.value !== "") {
         searchItemByName(e.target.value);
       } else {
-        getLibaryData();
+        // mutate(`/library/?category=${reduxCurrentCategory}`);
+        setIsFoundSearchData(true);
       }
-    }, 1000);
+    }, 500);
   };
+  useEffect(() => {
+    console.log("hello");
+    searchItemByName(searchValue);
+  }, [reduxCurrentSort]);
   return (
     <div className="pl-1 pr-2  ">
       <div
@@ -123,7 +168,6 @@ function SearchLibrary({
           <i className="inline">
             <FiSearch
               className="inline  mx-2 text-secondaryText font-bold text-lg "
-              // onClick={openSearchInput}
               ref={iconRef}
             />
           </i>
@@ -155,4 +199,5 @@ function SearchLibrary({
     </div>
   );
 }
+
 export default SearchLibrary;

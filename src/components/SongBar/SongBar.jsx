@@ -1,3 +1,4 @@
+"use client";
 import React, { useContext, useEffect } from "react";
 import { AiOutlineHeart, AiOutlinePlaySquare } from "react-icons/ai";
 import { BiRepeat, BiShuffle } from "react-icons/bi";
@@ -114,7 +115,7 @@ function SongBar() {
   // };
 
   return (
-    <div className="fixed z-1000 w-full flex items-center justify-between bottom-0 left-0 h-20 bg-black">
+    <div className="fixed z-10 w-full flex items-center justify-between bottom-0 left-0 h-20 bg-black">
       <div className="w-2/12">
         <div className="flex items-center gap-2">
           <Image

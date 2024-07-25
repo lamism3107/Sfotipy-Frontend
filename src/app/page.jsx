@@ -4,9 +4,14 @@ import Section from "../components/Section/Section";
 import GradientBG from "../components/GradientBG/GradientBG";
 import { useEffect, useRef, useState } from "react";
 import Header from "../components/Header/Header";
+import { useSelector } from "react-redux";
+import Signup from "../components/Sidebar/Signup";
+import "react-toastify/dist/ReactToastify.css";
+import { ToastContainer } from "react-toastify";
 
 function Home() {
   const bodyRef = useRef();
+  const user = useSelector((state) => state.auth.login.currentUser);
   const [isVisible, setIsVisible] = useState(false);
   useEffect(() => {
     const handleScroll = () => {
@@ -47,6 +52,15 @@ function Home() {
             // data={allAlbums}
           />
         </div>
+      </div>
+      {!user && <Signup />}
+      <div className="relative inset-0 ">
+        <ToastContainer
+          draggablePercent={60}
+          autoClose={2500}
+          limit={2}
+          position="bottom-center"
+        />
       </div>
     </MainLayout>
   );

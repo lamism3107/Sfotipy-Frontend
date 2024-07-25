@@ -1,6 +1,6 @@
 "use client";
 // import { getAuth } from "firebase/auth";
-import React, { useEffect, useRef, useState } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 import { FaAngleLeft, FaAngleRight, FaPlay, FaPlus } from "react-icons/fa";
 import { IoMdNotificationsOutline } from "react-icons/io";
 // import { app } from "../../config/firebase.config";
@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useDispatch, useSelector } from "react-redux";
-import * as authService from "../../services/authServices";
+import * as authService from "../../services/auth.api";
 import {
   logoutFailure,
   logoutStart,
@@ -20,25 +20,18 @@ import { app } from "../../config/firebase/firebase.config";
 import { fetchMyPlaylistsFailure } from "../../redux/slice/playlist.slice";
 import Image from "next/image";
 
-export default function Header({ isVisible, bgColor, title }) {
+function Header({ isVisible, bgColor, title }) {
   const [showSubNav, setShowSubNav] = useState(false);
   const headerRef = useRef();
   const router = useRouter();
   const dispatch = useDispatch();
-  const [userData, setUserData] = useState(null);
   const currentUser = useSelector((state) => state.auth.login.currentUser);
-
-  useEffect(() => {
-    if (currentUser) {
-      setUserData(currentUser);
-    }
-  }, [currentUser]);
 
   const handleLogOut = async () => {
     dispatch(logoutStart());
 
-    const res = await authService.logout(userData.accessToken, {
-      id: userData._id,
+    const res = await authService.logout(currentUser.accessToken, {
+      id: currentUser._id,
     });
     if (res) {
       if (res.success) {
@@ -51,13 +44,13 @@ export default function Header({ isVisible, bgColor, title }) {
       }
     }
     const res2 = await authService.logoutGG({
-      id: userData._id,
+      id: currentUser._id,
     });
     if (res2) {
       if (res2.success) {
         dispatch(logoutSuccess());
         dispatch(registerFailure(""));
-        router.push("/");
+        router.push("/login");
       } else {
         dispatch(logoutFailure());
       }
@@ -70,6 +63,7 @@ export default function Header({ isVisible, bgColor, title }) {
         router.refresh();
         dispatch(logoutSuccess());
         dispatch(registerFailure(""));
+        router.push("/login");
       })
       .catch((e) => {
         dispatch(logoutFailure());
@@ -97,7 +91,7 @@ export default function Header({ isVisible, bgColor, title }) {
   return (
     <div
       ref={headerRef}
-      className={`flex justify-between ml-4 fixed z-50 top-0 right-2 w-[calc(75%-24px)] z-100 py-4 rounded-t-lg mt-2 px-4 ${
+      className={`flex justify-between ml-4 fixed z-[1] top-0 right-2 w-[calc(75%-24px)]  py-4 rounded-t-lg mt-2 px-4 ${
         isVisible ? `${bgColor} shadow-lg` : " bg-transparent"
       } items-center `}
     >
@@ -112,7 +106,7 @@ export default function Header({ isVisible, bgColor, title }) {
         {isVisible && title}
       </div>
 
-      {userData ? (
+      {currentUser ? (
         <div className="flex items-center justify-center gap-2">
           <button className="p-1 flex items-center justify-center  bg-black w-8 h-8 rounded-full">
             <IoMdNotificationsOutline className="text-xl" />
@@ -128,11 +122,11 @@ export default function Header({ isVisible, bgColor, title }) {
               width={40}
               height={40}
               src={
-                userData?.imgURL
-                  ? userData?.imgURL
+                currentUser?.imgURL
+                  ? currentUser?.imgURL
                   : "/assets/default-avatar.jpg"
               }
-              alt=""
+              alt="dsada"
               className="w-8 h-8  rounded-full object-cover shadow-lg"
               referrerPolicy="no-refferer"
             />
@@ -148,7 +142,7 @@ export default function Header({ isVisible, bgColor, title }) {
                 ref={nameRef}
                 className="text-secondaryText text-md hover:text-white font-semibold"
               >
-                {userData?.name}
+                {currentUser?.name}
               </p>
             </div> */}
 
@@ -170,7 +164,7 @@ export default function Header({ isVisible, bgColor, title }) {
                 </p>
                 <hr />
 
-                {userData?.role === "admin" && (
+                {currentUser?.role === "admin" && (
                   <>
                     <Link href={"/"}>
                       <p className=" py-2.5 px-3  text-secondaryText hover:bg-[#323232] hover:text-white duration-150 transition-all ease-in-out">
@@ -210,3 +204,4 @@ export default function Header({ isVisible, bgColor, title }) {
     </div>
   );
 }
+export default memo(Header);

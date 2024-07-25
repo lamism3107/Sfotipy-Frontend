@@ -82,9 +82,10 @@ const Signup = () => {
           if (userCred) {
             userCred.getIdToken().then((token) => {
               authService.loginWithGoogle(token).then((data) => {
-                dispatch(loginSuccess(data));
-                router.push("/");
-                return data;
+                if (data && data.success) {
+                  dispatch(loginSuccess(data.data));
+                  router.push("/");
+                }
               });
             });
           } else {
@@ -147,7 +148,7 @@ const Signup = () => {
             src="/assets/logo-white-icon.png"
             width={50}
             height={50}
-            alt=""
+            alt="logo"
           />
         </div>
         <div className=" text-white">

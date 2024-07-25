@@ -1,4 +1,3 @@
-"use client";
 import { ToastContainer } from "react-toastify";
 import Sidebar from "../../components/Sidebar/Sidebar";
 import ConfirmModal from "../../components/ConfirmModal/ConfirmModal";
@@ -7,7 +6,7 @@ import SongBar from "../../components/SongBar/SongBar";
 const MainLayout = ({ children }) => {
   return (
     <div>
-      <div className="flex gap-2 relative ">
+      <div className="flex gap-2 relative z-20 ">
         <Sidebar />
 
         {/* w-[calc(75%-8px)] */}
@@ -16,19 +15,7 @@ const MainLayout = ({ children }) => {
         </div>
       </div>
 
-      <div className="relative ">
-        <ToastContainer
-          draggablePercent={60}
-          autoClose={2500}
-          limit={2}
-          position="bottom-center"
-        />
-      </div>
-      <ConfirmModal />
-      {/* <EditPlaylistModal /> */}
-      {/* <Section /> */}
-      {/* </div> */}
-
+      {/* <ConfirmModal /> */}
       <SongBar />
     </div>
   );

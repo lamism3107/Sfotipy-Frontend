@@ -65,3 +65,13 @@ export const userOptions = [
     button: "Tạo mới playlist",
   },
 ];
+
+export const languageList = [
+  { name: "English" },
+  { name: "Vietnamese" },
+  { name: "Latino" },
+  { name: "Portuguese" },
+  { name: "Korean" },
+  { name: "French" },
+  { name: "Japanese" },
+];

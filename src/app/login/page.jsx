@@ -77,24 +77,29 @@ const Login = () => {
 
   const loginWithGoogle = async () => {
     dispatch(loginStart());
-    await signInWithPopup(firebaseAuth, provider).then((res) => {
-      if (res) {
-        firebaseAuth.onAuthStateChanged((userCred) => {
-          if (userCred) {
-            userCred.getIdToken().then((token) => {
-              authService.loginWithGoogle(token).then((data) => {
-                dispatch(loginSuccess(data));
-
-                router.push("/");
+    await signInWithPopup(firebaseAuth, provider)
+      .then((res) => {
+        if (res) {
+          firebaseAuth.onAuthStateChanged((userCred) => {
+            if (userCred) {
+              userCred.getIdToken().then((token) => {
+                authService.loginWithGoogle(token).then((data) => {
+                  if (data && data.success) {
+                    dispatch(loginSuccess(data.data));
+                    router.push("/");
+                  }
+                });
               });
-            });
-          } else {
-            router.push("/login");
-            dispatch(loginFailure());
-          }
-        });
-      }
-    });
+            } else {
+              router.push("/login");
+              dispatch(loginFailure());
+            }
+          });
+        }
+      })
+      .catch((err) => {
+        console.log("firebaseAuth error: " + err);
+      });
   };
 
   const handleSubmit = async (e) => {
@@ -135,7 +140,7 @@ const Login = () => {
               src="/assets/logo-white-icon.png"
               width={50}
               height={50}
-              alt=""
+              alt="logo"
             />
           </div>
           <h1 className="text-4xl my-12 font-semibold">

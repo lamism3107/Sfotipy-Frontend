@@ -8,7 +8,7 @@ const Signup = () => {
     router.push("/signup");
   };
   return (
-    <div className="fixed bottom-0 right-0 left-0 signup_bar text-sm items-center flex px-4 py-2 mx-2 justify-between">
+    <div className="fixed bottom-0 right-0 -left-2 signup_bar text-sm items-center flex px-4 py-4  justify-between">
       <div>
         <p className=" uppercase">preview on spotify</p>
         <p className="font-bold">
@@ -16,8 +16,8 @@ const Signup = () => {
         </p>
       </div>
       <button
-        onClick={debounce(handleChangeRouter, 5000)}
-        className="rounded-full text-black mt-4 px-8 text-lg  py-2 bg-white font-semibold"
+        onClick={() => handleChangeRouter()}
+        className="hover:scale-105 transition-all duration-150 ease-out rounded-full text-black  px-8 text-lg  py-2 bg-white font-semibold"
       >
         Đăng ký miễn phí
       </button>

@@ -1,35 +1,32 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
-import { PiQueueBold, PiSecurityCameraThin } from "react-icons/pi";
+import { PiQueueBold } from "react-icons/pi";
 import { FiEdit2, FiPlusCircle } from "react-icons/fi";
 import { IoMdCloseCircleOutline } from "react-icons/io";
 import { useDispatch, useSelector } from "react-redux";
+
+import * as playlistServices from "../../services/playlist.api.js";
+import * as libraryServices from "../../services/library.api.js";
 import {
-  closePlaylistMenuContext,
-  okConfirmModal,
-  openConfirmModal,
-} from "../../redux/slice/system.slice";
-import * as playlistServices from "../../services/playlistServices";
-import * as libraryServices from "../../services/libraryServices";
-import {
-  createNewAlbumSuccess,
-  createNewPlaylistStart,
-  createNewPlaylistSuccess,
-  deleteAlbum,
-  deletePlaylist,
-  editAlbumStart,
-  editPlaylistStart,
   setCurrentPlaylist,
+  setEditingAlbum,
+  setEditingPlaylist,
 } from "../../redux/slice/playlist.slice";
 import { toast } from "react-toastify";
 import { initAlbum, initPlaylist } from "../../constants/initValue";
-import {
-  addItemToLibrary,
-  removeFromCategoryList,
-  removeItemFromLibrary,
-} from "../../redux/slice/library.slice";
+import { setCurrentCategory } from "../../redux/slice/library.slice";
+import useSWR, { mutate } from "swr";
 import { usePathname, useRouter } from "next/navigation";
-import { LuListMusic } from "react-icons/lu";
+import ConfirmModal from "../ConfirmModal/ConfirmModal";
+import {
+  useAlbumLibrary,
+  useAllLibrary,
+  useArtistLibrary,
+  useMyAlbums,
+  useMyPlaylists,
+  usePlaylistLibrary,
+  useSongLibrary,
+} from "../../app/customHooks/librarySWRHooks.js";
 
 export const myPlaylistMenu = [
   {
@@ -72,6 +69,10 @@ export const userPlaylistMenu = [
 ];
 
 export default function PlaylistMenuContext({
+  confirmModalProps,
+  setConfirmModalProps,
+  isOpenConfirmModal,
+  setIsOpenConfirmModal,
   isOpenEditModal,
   setIsOpenEditModal,
   setIsOpenPlaylistMenuContext,
@@ -81,22 +82,34 @@ export default function PlaylistMenuContext({
   const menuRef = useRef();
   const dispatch = useDispatch();
   const router = useRouter();
-  const libraryData = useSelector(
-    (state) => state.library.libraryData.libraryData
+  const user = useSelector((state) => state.auth.login.currentUser);
+  const swrMyAlbum = useMyAlbums(user._id);
+  const swrMyPlaylist = useMyPlaylists(user._id);
+  const swrAlbumData = useAlbumLibrary();
+  const swrAllData = useAllLibrary();
+  const swrSongData = useSongLibrary();
+  const swrPlaylistData = usePlaylistLibrary();
+  const swrArtistData = useArtistLibrary();
+  const reduxCurrentCategory = useSelector(
+    (state) => state.library.currentCategory
   );
-  const reduxMyAlbums = useSelector(
-    (state) => state.playlist.myPlaylists.myAlbums
-  );
-  const reduxMyPlaylists = useSelector(
-    (state) => state.playlist.myPlaylists.myPlaylists
+  const {
+    data: libraryData,
+    isLoading: isLoadingLibraryData,
+    mutate: mutateLibraryData,
+  } = useSWR(
+    `/library/?category=${reduxCurrentCategory}`,
+    () => libraryServices.getLibraryData(reduxCurrentCategory),
+    {
+      dedupingInterval: 3000,
+      revalidateOnFocus: false,
+      revalidateIfStale: false,
+    }
   );
   const { target, object, type, top, left } = menuContextProps;
-  const user = useSelector((state) => state?.auth?.login?.currentUser);
 
   const handleOnclickOutside = (e) => {
-    const myTarget = document.querySelector(".three-dot");
     if (menuRef.current && !menuRef.current.contains(e.target)) {
-      console.log("ditme");
       setIsOpenPlaylistMenuContext(false);
     }
     if (target?.current && !target.current.contains(e.target)) {
@@ -123,8 +136,63 @@ export default function PlaylistMenuContext({
         object?._id
       );
       if (res && res.success) {
-        dispatch(removeItemFromLibrary(object));
-        dispatch(removeFromCategoryList(object));
+        if (object?.codeType !== reduxCurrentCategory) {
+          swrAlbumData.mutate();
+          mutate(
+            `/library/?category=${reduxCurrentCategory}`,
+            async (data) => {
+              let newLibraryData = [...data.libraryData];
+              let newCategoryList = [...data.categoryList];
+              newLibraryData = newLibraryData.filter(
+                (data) => data._id !== res.data._id
+              );
+              const listSameTypeItem = data.libraryData.filter(
+                (item) => item.codeType === res.data.codeType
+              );
+              if (listSameTypeItem.length === 1) {
+                newCategoryList = [...data.categoryList].filter(
+                  (item) => item !== res.data.codeType
+                );
+              }
+              return {
+                libraryData: newLibraryData,
+                categoryList: newCategoryList,
+              };
+            },
+            false
+          );
+        } else {
+          const newLibraryData = await swrAllData.mutate();
+          if (libraryData.libraryData.length === 1 && newLibraryData) {
+            console.log("hello", newLibraryData);
+            dispatch(setCurrentCategory("All"));
+          }
+          mutate(
+            `/library/?category=${reduxCurrentCategory}`,
+            async (data) => {
+              {
+                let newLibraryData = [...data.libraryData];
+                let newCategoryList = [...data.categoryList];
+                newLibraryData = newLibraryData.filter(
+                  (data) => data._id !== res.data._id
+                );
+                const listSameTypeItem = data.libraryData.filter(
+                  (item) => item.codeType === res.data.codeType
+                );
+                if (listSameTypeItem.length === 1) {
+                  newCategoryList = [...data.categoryList].filter(
+                    (item) => item !== res.data.codeType
+                  );
+                }
+                return {
+                  libraryData: newLibraryData,
+                  categoryList: newCategoryList,
+                };
+              }
+            },
+            false
+          );
+        }
       }
       if (object?.owner?._id === user._id) {
         const currentId = pathName.slice(pathName.lastIndexOf("/") + 1);
@@ -133,11 +201,28 @@ export default function PlaylistMenuContext({
         }
         const res2 = await playlistServices.deleteMyPlaylistAlbum(object._id);
         if (object?.codeType === "Album") {
-          if (libraryData) {
-            dispatch(deleteAlbum(object?._id));
-          }
+          mutate(
+            `/users/${user._id}/albums`,
+            (data) => {
+              const newMyAlbums = [...data].filter(
+                (item) => item._id !== res.data._id
+              );
+
+              return newMyAlbums;
+            },
+            false
+          );
         } else {
-          dispatch(deletePlaylist(object?._id));
+          mutate(
+            `/users/${user._id}/playlists`,
+            (data) => {
+              const newMyPlaylists = [...data].filter(
+                (item) => item._id !== res.data._id
+              );
+              return newMyPlaylists;
+            },
+            false
+          );
         }
         if (res2 && res2.success) {
           toast.success(`Xoá ${type} thành công !`);
@@ -148,27 +233,64 @@ export default function PlaylistMenuContext({
     };
 
     deletePlaylistFromDB();
-    dispatch(okConfirmModal());
+    setIsOpenConfirmModal(false);
   };
+
   //Handle Add playlist
   const handleAddPlaylistAlbum = (type) => {
     const addItemToLibraryDB = async () => {
       if (type === "Album") {
-        dispatch(createNewPlaylistStart());
         const res = await playlistServices.createNewPlaylist(
-          initAlbum(reduxMyAlbums)
+          initAlbum(swrMyAlbum?.data)
         );
         if (res && res.success) {
-          dispatch(createNewAlbumSuccess(res.data));
-          dispatch(addItemToLibrary(res.data));
+          router.push(`/album/${res.data._id}`);
           dispatch(setCurrentPlaylist(res.data));
-
+          mutate(
+            `/users/${user._id}/albums`,
+            (data) => {
+              let newMyAlbums = [...data];
+              newMyAlbums.unshift(res.data);
+              return newMyAlbums;
+            },
+            false
+          );
           const res2 = await libraryServices.addAlbumPlaylistToLibrary(
             res.data._id
           );
-          if (res && res2.success) {
-            router.push(`/album/${res.data._id}`);
+          if (res2 && res2.success) {
             toast.success("Tạo mới album thành công!");
+            if (res.data.codeType !== reduxCurrentCategory) {
+              dispatch(setCurrentCategory("All"));
+              mutate(
+                `/library/?category=All`,
+                (data) => {
+                  let newLibraryData = [...data.libraryData];
+                  let newCategoryList = [...data.categoryList];
+                  newLibraryData.unshift(res.data);
+                  return {
+                    categoryList: newCategoryList,
+                    libraryData: newLibraryData,
+                  };
+                },
+                false
+              );
+              mutate(`/library/?category=${res.data.codeType}`);
+            } else {
+              mutate(
+                `/library/?category=${reduxCurrentCategory}`,
+                (data) => {
+                  let newLibraryData = [...data.libraryData];
+                  let newCategoryList = [...data.categoryList];
+                  newLibraryData.unshift(res.data);
+                  return {
+                    categoryList: newCategoryList,
+                    libraryData: newLibraryData,
+                  };
+                },
+                false
+              );
+            }
             return;
           }
         } else {
@@ -176,33 +298,64 @@ export default function PlaylistMenuContext({
         }
       }
       if (type === "Playlist") {
-        dispatch(createNewPlaylistStart());
         const res = await playlistServices.createNewPlaylist(
-          initPlaylist(reduxMyPlaylists)
+          initPlaylist(swrMyPlaylist?.data)
         );
         if (res && res.success) {
           router.push(`/playlist/${res.data._id}`);
-
-          dispatch(addItemToLibrary(res.data));
-          dispatch(createNewPlaylistSuccess(res.data));
           dispatch(setCurrentPlaylist(res.data));
-
+          swrMyPlaylist?.mutate((data) => {
+            let newMyPlaylists = [...data];
+            newMyPlaylists.unshift(res.data);
+            return newMyPlaylists;
+          }, false);
           const res2 = await libraryServices.addAlbumPlaylistToLibrary(
             res.data._id
           );
           if (res2 && res2.success) {
-            toast.success("Tạo mới playlist thành công!");
+            toast.success("Tạo mới danh sách phát thành công!");
+            if (res.data.codeType !== reduxCurrentCategory) {
+              dispatch(setCurrentCategory("All"));
+              mutate(
+                `/library/?category=All`,
+                (data) => {
+                  let newLibraryData = [...data.libraryData];
+                  let newCategoryList = [...data.categoryList];
+                  newLibraryData.unshift(res.data);
+                  return {
+                    categoryList: newCategoryList,
+                    libraryData: newLibraryData,
+                  };
+                },
+                false
+              );
+              mutate(`/library/?category=${res.data.codeType}`);
+            } else {
+              mutate(
+                `/library/?category=${reduxCurrentCategory}`,
+                (data) => {
+                  let newLibraryData = [...data.libraryData];
+                  let newCategoryList = [...data.categoryList];
+                  newLibraryData.unshift(res.data);
+                  return {
+                    categoryList: newCategoryList,
+                    libraryData: newLibraryData,
+                  };
+                },
+                false
+              );
+            }
             return;
           }
         } else {
-          toast.error("Tạo mới một playlist thất bại!");
+          toast.error("Tạo mới danh sách phát thất bại!");
         }
       }
     };
     addItemToLibraryDB();
   };
+
   const handleSelectMenu = (id) => {
-    //My item
     if (object.owner._id === user._id) {
       if (type === "Album" || type === "Playlist") {
         if (id === 4) {
@@ -212,22 +365,27 @@ export default function PlaylistMenuContext({
           setIsOpenPlaylistMenuContext(false);
           setIsOpenEditModal(true);
           if (type === "Playlist") {
-            dispatch(editPlaylistStart(object._id));
+            const foundPlaylist =
+              swrMyPlaylist.data.find(
+                (playlist) => playlist._id === object._id
+              ) || null;
+            dispatch(setEditingPlaylist(foundPlaylist));
           }
           if (type === "Album") {
-            dispatch(editAlbumStart(object._id));
+            const foundAlbum =
+              swrMyAlbum.data.find((album) => album._id === object._id) || null;
+            dispatch(setEditingPlaylist(foundAlbum));
           }
         }
         if (id === 3) {
-          dispatch(
-            openConfirmModal({
-              title: `Xoá ${type} `,
-              onOk: handleDeletePlaylistAlbum,
-              cancelButton: "Huỷ bỏ",
-              okButton: "Xoá",
-              children: `Bạn thực sự muốn xoá ${object.name}?`,
-            })
-          );
+          setIsOpenConfirmModal(true);
+          setConfirmModalProps({
+            title: "Loại bỏ khỏi thư viện",
+            onOk: handleDeletePlaylistAlbum,
+            cancelButton: "Huỷ bỏ",
+            okButton: "Loại bỏ",
+            children: `Bạn thực sự muốn loại bỏ ${object.name} khỏi thư viện?`,
+          });
         }
       }
     } else {
@@ -237,20 +395,18 @@ export default function PlaylistMenuContext({
           handleAddPlaylistAlbum(type);
         }
         if (id === 2) {
-          dispatch(
-            openConfirmModal({
-              title: `Loại bỏ khỏi thư viện `,
-              onOk: handleDeletePlaylistAlbum,
-              cancelButton: "Huỷ bỏ",
-              okButton: "Loại bỏ",
-              children: `Bạn thực sự muốn loại bỏ ${object.name} khỏi thư viện?`,
-            })
-          );
+          setConfirmModalProps({
+            title: "Loại bỏ khỏi thư viện",
+            onOk: handleDeletePlaylistAlbum,
+            cancelButton: "Huỷ bỏ",
+            okButton: "Loại bỏ",
+            children: `Bạn thực sự muốn loại bỏ ${object.name} khỏi thư viện?`,
+          });
+          setIsOpenConfirmModal(true);
         }
       }
     }
   };
-  console.log("check object", object);
   return (
     <div className="absolute inset-0">
       <div

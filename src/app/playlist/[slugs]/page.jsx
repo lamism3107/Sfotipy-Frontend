@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import Header from "../../../components/Header/Header";
 import GradientBG from "../../../components/GradientBG/GradientBG";
 import { useDispatch, useSelector } from "react-redux";
-import * as playlistServices from "../../../services/playlistServices";
+import * as playlistServices from "../../../services/playlist.api.js";
 import { setCurrentPlaylist } from "../../../redux/slice/playlist.slice";
 import Image from "next/image";
 export default function PlaylistPage(props) {
@@ -27,8 +27,7 @@ export default function PlaylistPage(props) {
       getCurrentPlaylist();
     }
   }, []);
-  console.log("check", reduxCurrentPlaylist);
-  console.log("check params", params);
+
   useEffect(() => {
     const handleScroll = () => {
       if (bodyRef?.current.scrollTop > 40) {
@@ -57,8 +56,8 @@ export default function PlaylistPage(props) {
             <div className="p-6 ">
               <Image
                 src={
-                  reduxCurrentPlaylist.thumbnail !== ""
-                    ? reduxCurrentPlaylist.thumbnail
+                  reduxCurrentPlaylist?.thumbnail !== ""
+                    ? reduxCurrentPlaylist?.thumbnail
                     : "/assets/playlistDefault.png"
                 }
                 className="shadow-[rgba(0,_0,_0,_0.8)_0px_30px_90px] rounded-[4px]"
@@ -71,13 +70,13 @@ export default function PlaylistPage(props) {
             {/* Text info  */}
             <div className="flex-1  flex flex-col justify-end  h-full w-full">
               <p className="text-white text-md mt-5 font-medium">
-                {reduxCurrentPlaylist.codeType}
+                {reduxCurrentPlaylist?.codeType}
               </p>
               <h1 className="text-white text-[84px] font-bold leading-[100px]">
-                {reduxCurrentPlaylist.name}
+                {reduxCurrentPlaylist?.name}
               </h1>
               <p className="text-white text-md font-semibold mt-5">
-                {reduxCurrentPlaylist.owner.name}
+                {reduxCurrentPlaylist?.owner.name}
               </p>
             </div>
           </div>

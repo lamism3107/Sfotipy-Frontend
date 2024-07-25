@@ -3,13 +3,13 @@
 // import { store } from "@/redux/store";
 import axios from "axios";
 import jwt_decode from "jwt-decode";
-import { refreshToken } from "../services/authServices";
+import { refreshToken } from "../services/auth.api";
 import { store } from "../redux/store";
 import { loginSuccess } from "../redux/slice/auth.slice";
 
 const config = {
-  // BASE_URL: "http://localhost:8000/api",
-  BASE_URL: "https://sfotipy-backend.vercel.app/api",
+  BASE_URL: "http://localhost:8000/api",
+  // BASE_URL: "https://sfotipy-backend.vercel.app/api",
 
   TIME_OUT: 30000,
 };
@@ -36,8 +36,6 @@ fetcher.interceptors.request.use(
 fetcher.interceptors.response //Config response nhận về
   .use(
     function (response) {
-      console.log("check response", response);
-
       return response && response.data ? response.data : response;
     },
     function (error) {

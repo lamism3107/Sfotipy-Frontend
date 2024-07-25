@@ -23,6 +23,7 @@ export default function TableContent() {
               <div className="cursor-pointer flex-grow  rounded-md  gap-3.5 flex item-center justify-start ">
                 <div className="w-[44px] h-[44px]">
                   <Image
+                    alt="thumbnail"
                     width={50}
                     height={50}
                     className="object-cover  h-full rounded-md"

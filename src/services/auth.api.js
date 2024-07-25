@@ -1,5 +1,4 @@
-import { logoutSuccess } from "../redux/slice/auth.slice";
-import { createAxios, createAxiosRefresh } from "../utils/axiosInstance";
+import { createAxios } from "../utils/jwtAxios";
 import { fetcher } from "../utils/fetcher";
 
 const login = async (data) => {
@@ -27,7 +26,7 @@ const loginWithGoogle = async (token) => {
         Authorization: `Bearer ${token}`,
       },
     });
-    return res.data;
+    return res;
   } catch (e) {
     console.log("error from fetching", e);
   }
@@ -45,7 +44,8 @@ const refreshToken = async (id) => {
 };
 
 const logout = async (token, id) => {
-  let axiosJWT = createAxios(logoutSuccess);
+  let axiosJWT = createAxios();
+
   try {
     const res = await axiosJWT.post(`/auth/logout`, id, {
       headers: {
